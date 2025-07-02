@@ -63,13 +63,22 @@
 
                     <div class="row mb-4">
                         <div class="col-md-6">
-                            <div class="form-check form-switch">
+                            <div class="form-check form-switch mb-3">
                                 {{ form.deep_scan(class="form-check-input") }}
                                 <label class="form-check-label fw-bold" for="{{ form.deep_scan.id }}">
                                     <i class="fas fa-microscope me-2"></i>Deep Scan
                                 </label>
                                 <div class="form-text">
                                     More thorough analysis (takes longer)
+                                </div>
+                            </div>
+                            <div class="form-check form-switch">
+                                {{ form.ai_analysis(class="form-check-input") }}
+                                <label class="form-check-label fw-bold" for="{{ form.ai_analysis.id }}">
+                                    🧠 AI Fix Advisor
+                                </label>
+                                <div class="form-text">
+                                    Get AI-powered fix recommendations (uses OpenAI)
                                 </div>
                             </div>
                         </div>

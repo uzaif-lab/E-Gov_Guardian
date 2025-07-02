@@ -1,58 +1,59 @@
+# E-Gov Guardian Security Scanner Configuration
+
+# OWASP ZAP Configuration (Optional - enhanced scanning)
 zap:
-  enabled: false # Set to false to disable ZAP dependency
+  enabled: false # Set to true if you have ZAP installed locally or via Docker
   host: "127.0.0.1"
   port: 8080
-  api_key: null # Set if ZAP authentication is enabled
-  docker_mode: true # Use Docker-based ZAP API
-  timeout: 300
+  api_key: null # Optional ZAP API key for authenticated access
+  docker:
+    enabled: false # Set to true to use ZAP via Docker
+    image: "owasp/zap2docker-stable"
 
-# Alternative API-based scanning services
+# Alternative Built-in Scanner (Always enabled)
 alternative_scanners:
   enabled: true
-  use_builtin_checks: true # Use built-in vulnerability checks
-  online_apis:
-    enabled: false # Set to true to use online scanning APIs
-    # Add your preferred online scanning service APIs here
+  use_builtin_checks: true
 
+# AI Analysis Configuration
+ai_analysis:
+  enabled: false # Will be toggled by user in web interface
+  openai_api_key: "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"
+  model: "gpt-4o-mini" # Using GPT-4o-mini for better quality recommendations
+  max_tokens: 150 # Keep recommendations short (1-2 lines)
+  temperature: 0.1 # Low temperature for consistent technical advice
+
+# Scanner Configuration
 scanner:
   max_scan_time: 1800 # 30 minutes
   max_depth: 5
   thread_count: 10
+  deep_scan_depth: 8
 
+# Vulnerability Detection Settings
 vulnerabilities:
   sql_injection:
     enabled: true
     severity_threshold: "Medium"
-
   xss:
     enabled: true
     severity_threshold: "Medium"
-
   insecure_headers:
     enabled: true
-    check_headers:
-      - "X-Frame-Options"
-      - "X-Content-Type-Options"
-      - "X-XSS-Protection"
-      - "Strict-Transport-Security"
-      - "Content-Security-Policy"
-
   insecure_cookies:
     enabled: true
-    check_flags:
-      - "HttpOnly"
-      - "Secure"
-      - "SameSite"
-
   port_scan:
     enabled: true
-    common_ports: [21, 22, 23, 25, 53, 80, 110, 443, 993, 995, 8080, 8443]
-
+    common_ports: [80, 443, 22, 21, 25, 53, 110, 993, 995, 8080, 8443]
   malware_check:
     enabled: true
-    scan_extensions: [".exe", ".dll", ".bat", ".cmd", ".scr", ".pif", ".com"]
 
+# Reporting Configuration
 reporting:
-  output_format: "json" # json, html, csv
+  output_format: "json" # json, html, csv, pdf
   detailed_report: true
-  include_screenshots: false
+  include_ai_recommendations: true # Include AI recommendations when available
+
+# Debug and Logging
+debug: false
+log_file: null # Set to file path for file logging, null for console only

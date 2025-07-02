@@ -21,6 +21,7 @@ from .zap_client import ZAPClient
 from .vulnerability_detector import VulnerabilityDetector
 from .report_generator import ReportGenerator
 from .builtin_scanner import BuiltinAPIScanner
+from .ai_advisor import AIFixAdvisor
 
 # Disable SSL warnings for testing
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -31,6 +32,7 @@ class SecurityScanner:
     def __init__(self, config_path: str = "config.yaml"):
         self.config = self._load_config(config_path)
         self._setup_logging()
+        self.logger = logging.getLogger(__name__)
         
         # Initialize components based on configuration
         self.zap_enabled = self.config.get('zap', {}).get('enabled', False)
@@ -49,7 +51,23 @@ class SecurityScanner:
         self.vuln_detector = VulnerabilityDetector()
         self.report_generator = ReportGenerator()
         
-        self.logger = logging.getLogger(__name__)
+        # Initialize AI advisor if API key is available (always try to initialize)
+        self.ai_enabled = self.config.get('ai_analysis', {}).get('enabled', False)
+        if self.config.get('ai_analysis', {}).get('openai_api_key'):
+            try:
+                self.ai_advisor = AIFixAdvisor(
+                    api_key=self.config['ai_analysis']['openai_api_key'],
+                    model=self.config['ai_analysis'].get('model', 'gpt-3.5-turbo'),
+                    max_tokens=self.config['ai_analysis'].get('max_tokens', 150),
+                    temperature=self.config['ai_analysis'].get('temperature', 0.1)
+                )
+                self.logger.info("🧠 AI advisor initialized successfully")
+            except Exception as e:
+                self.logger.warning(f"Failed to initialize AI advisor: {str(e)}")
+                self.ai_advisor = None
+        else:
+            self.ai_advisor = None
+            self.logger.info("No OpenAI API key found - AI analysis disabled")
         
     def _load_config(self, config_path: str) -> Dict[str, Any]:
         """Load configuration from YAML file"""
@@ -177,8 +195,16 @@ class SecurityScanner:
                     self.logger.warning(f"Port scan failed: {str(e)}")
                     scan_results['results']['infrastructure'] = {'error': 'Port scan requires elevated privileges'}
             
-            # 5. Generate comprehensive analysis
-            self.logger.info("Phase 5: Analysis and Risk Assessment")
+            # 5. AI-powered vulnerability analysis (if enabled)
+            if self.ai_enabled and self.ai_advisor:
+                self.logger.info("Phase 5: AI-Powered Vulnerability Analysis")
+                scan_results = self.ai_advisor.analyze_vulnerabilities(scan_results)
+                scan_results['ai_analysis_enabled'] = True
+            else:
+                scan_results['ai_analysis_enabled'] = False
+            
+            # 6. Generate comprehensive analysis
+            self.logger.info("Phase 6: Final Analysis and Risk Assessment")
             scan_results['summary'] = self._generate_comprehensive_summary(scan_results['results'])
             scan_results['risk_rating'] = self._calculate_risk_rating(scan_results['summary'])
             scan_results['recommendations'] = self._generate_recommendations(scan_results['results'])

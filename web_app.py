@@ -58,6 +58,8 @@ def transform_scanner_results(scanner_output):
     """Transform scanner output to match web template format"""
     # Extract vulnerabilities from scanner results
     vulnerabilities = []
+    ai_analysis_attempted = scanner_output.get('ai_analysis_enabled', False)
+    ai_recommendations_found = 0
     
     # Get vulnerabilities from different scan sources
     if 'results' in scanner_output:
@@ -83,41 +85,75 @@ def transform_scanner_results(scanner_output):
             for vuln_type, vuln_list in builtin_vulns.items():
                 if isinstance(vuln_list, list):
                     for vuln in vuln_list:
+                        # Check for AI recommendation
+                        ai_recommendation = vuln.get('ai_recommendation', '')
+                        if ai_recommendation:
+                            ai_recommendations_found += 1
+                        
+                        remediation = ai_recommendation if ai_recommendation else f'Fix {vuln_type} vulnerability'
+                        
                         vulnerabilities.append({
                             'type': vuln_type.replace('_', ' ').title(),
                             'severity': vuln.get('risk', 'MEDIUM').upper(),
                             'description': vuln.get('description', f'{vuln_type} vulnerability detected'),
                             'location': vuln.get('url', ''),
                             'details': vuln.get('payload', ''),
-                            'remediation': f'Fix {vuln_type} vulnerability'
+                            'remediation': remediation,
+                            'ai_powered': bool(ai_recommendation)
                         })
         
         # From security headers
         if 'security_headers' in results and 'missing_headers' in results['security_headers']:
             for header in results['security_headers']['missing_headers']:
+                # Check for AI recommendation
+                ai_recommendation = header.get('ai_recommendation', '')
+                if ai_recommendation:
+                    ai_recommendations_found += 1
+                    
+                remediation = ai_recommendation if ai_recommendation else 'Add the missing security header'
+                
                 vulnerabilities.append({
                     'type': f'Missing Security Header: {header.get("header", "Unknown")}',
                     'severity': header.get('severity', 'MEDIUM').upper(),
                     'description': header.get('description', 'Missing security header'),
                     'location': scanner_output.get('target', ''),
                     'details': f'Header: {header.get("header", "Unknown")}',
-                    'remediation': header.get('recommendation', 'Add the missing security header')
+                    'remediation': remediation,
+                    'ai_powered': bool(ai_recommendation)
                 })
         
         # From cookie security
         if 'cookie_security' in results and 'insecure_cookies' in results['cookie_security']:
             for cookie in results['cookie_security']['insecure_cookies']:
+                # Check for AI recommendation
+                ai_recommendation = cookie.get('ai_recommendation', '')
+                if ai_recommendation:
+                    ai_recommendations_found += 1
+                    
+                remediation = ai_recommendation if ai_recommendation else 'Set secure cookie flags (Secure, HttpOnly, SameSite)'
+                
                 vulnerabilities.append({
                     'type': 'Insecure Cookie Configuration',
                     'severity': cookie.get('severity', 'MEDIUM').upper(),
                     'description': cookie.get('issue', 'Cookie security issue'),
                     'location': scanner_output.get('target', ''),
                     'details': f'Cookie: {cookie.get("name", "Unknown")}',
-                    'remediation': 'Set secure cookie flags (Secure, HttpOnly, SameSite)'
+                    'remediation': remediation,
+                    'ai_powered': bool(ai_recommendation)
                 })
 
     # Get summary data
     summary = scanner_output.get('summary', {})
+    
+    # Determine AI analysis status message
+    ai_status_message = ""
+    if ai_analysis_attempted:
+        if ai_recommendations_found > 0:
+            ai_status_message = f"✅ AI analysis completed - {ai_recommendations_found} AI-powered recommendations generated"
+        else:
+            ai_status_message = "⚠️ AI analysis attempted but failed (likely due to OpenAI API quota limits or connectivity issues)"
+    else:
+        ai_status_message = "ℹ️ AI analysis not requested for this scan"
     
     # Transform to template format
     web_format = {
@@ -134,7 +170,10 @@ def transform_scanner_results(scanner_output):
             'scanner_version': scanner_output.get('scanner_version', '2.0.0'),
             'duration': scanner_output.get('scan_duration', '0'),
             'scan_type': scanner_output.get('scan_type', 'web_application'),
-            'total_checks': len(vulnerabilities) + 10  # Estimate
+            'total_checks': len(vulnerabilities) + 10,  # Estimate
+            'ai_analysis_attempted': ai_analysis_attempted,
+            'ai_recommendations_count': ai_recommendations_found,
+            'ai_status_message': ai_status_message
         }
     }
     
@@ -149,6 +188,7 @@ class ScanForm(FlaskForm):
     target_url = StringField('Target URL', validators=[DataRequired(), URL()], 
                             render_kw={"placeholder": "https://example.com"})
     deep_scan = BooleanField('Deep Scan (More thorough but slower)')
+    ai_analysis = BooleanField('🧠 AI Fix Advisor (Get AI-powered fix recommendations)')
     scan_type = SelectField('Scan Type', choices=[('url', 'Web Application')])
     submit = SubmitField('Start Security Scan')
 
@@ -204,6 +244,14 @@ def generate_pdf_report_in_memory(json_data):
         ['Total Vulnerabilities', str(summary.get('total_vulnerabilities', 0))],
         ['Scan Duration', f"{json_data.get('scan_info', {}).get('duration', 'N/A')} seconds"]
     ]
+    
+    # Add AI analysis status if applicable
+    scan_info = json_data.get('scan_info', {})
+    if scan_info.get('ai_analysis_attempted'):
+        ai_status = f"{scan_info.get('ai_recommendations_count', 0)} AI recommendations"
+        if scan_info.get('ai_recommendations_count', 0) == 0:
+            ai_status += " (Failed - API quota/connectivity issue)"
+        summary_data.append(['AI Analysis', ai_status])
     
     summary_table = Table(summary_data, colWidths=[2*inch, 3*inch])
     summary_table.setStyle(TableStyle([
@@ -265,6 +313,14 @@ def generate_pdf_report_in_memory(json_data):
                 ['Description', vuln.get('description', 'N/A')[:200] + '...' if len(vuln.get('description', '')) > 200 else vuln.get('description', 'N/A')]
             ]
             
+            # Add AI recommendation if available
+            if vuln.get('ai_powered') and vuln.get('remediation'):
+                ai_rec = vuln.get('remediation', '')
+                ai_label = "🧠 AI Fix Advisor"
+                vuln_details.append([ai_label, ai_rec[:300] + '...' if len(ai_rec) > 300 else ai_rec])
+            elif vuln.get('remediation'):
+                vuln_details.append(['Remediation', vuln.get('remediation', 'N/A')[:200] + '...' if len(vuln.get('remediation', '')) > 200 else vuln.get('remediation', 'N/A')])
+            
             vuln_table = Table(vuln_details, colWidths=[1.5*inch, 4*inch])
             vuln_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (0, -1), colors.lightblue),
@@ -293,7 +349,7 @@ def generate_pdf_report_in_memory(json_data):
     buffer.seek(0)
     return buffer
 
-def run_scan_async(scan_id, target_url, deep_scan):
+def run_scan_async(scan_id, target_url, deep_scan, ai_analysis=False):
     """Run security scan asynchronously"""
     import logging
     logger = logging.getLogger(__name__)
@@ -307,10 +363,22 @@ def run_scan_async(scan_id, target_url, deep_scan):
             'timestamp': current_timestamp
         }
         save_scan_status(scan_status)
-        logger.info(f"Starting scan for {target_url}")
+        logger.info(f"Starting scan for {target_url} (AI Analysis: {ai_analysis})")
         
-        # Initialize scanner
+        # Initialize scanner with AI analysis setting
         scanner = SecurityScanner()
+        
+        # Enable AI analysis if requested
+        if ai_analysis:
+            if scanner.ai_advisor:
+                scanner.ai_enabled = True
+                logger.info("🧠 AI analysis enabled for this scan")
+            else:
+                logger.warning("🚫 AI analysis requested but AI advisor not available (check OpenAI API key)")
+                scanner.ai_enabled = False
+        else:
+            scanner.ai_enabled = False
+            logger.info("ℹ️  AI analysis not requested by user")
         
         # Run scan
         scan_status[scan_id]['progress'] = 25
@@ -404,11 +472,12 @@ def start_scan():
         # Get form data
         target_url = form.target_url.data
         deep_scan = form.deep_scan.data
+        ai_analysis = form.ai_analysis.data
         
         # Start scan in background thread
         thread = threading.Thread(
             target=run_scan_async,
-            args=(scan_id, target_url, deep_scan)
+            args=(scan_id, target_url, deep_scan, ai_analysis)
         )
         thread.daemon = True
         thread.start()
