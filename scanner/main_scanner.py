@@ -53,15 +53,25 @@ class SecurityScanner:
         
         # Initialize AI advisor if API key is available (always try to initialize)
         self.ai_enabled = self.config.get('ai_analysis', {}).get('enabled', False)
-        if self.config.get('ai_analysis', {}).get('openai_api_key'):
+        
+        # Try to get OpenAI API key from environment variable first, then config file
+        import os
+        openai_api_key = (
+            os.getenv('OPENAI_API_KEY') or 
+            os.getenv('OPENAI_API_KEY_EGOV') or
+            self.config.get('ai_analysis', {}).get('openai_api_key')
+        )
+        
+        if openai_api_key and openai_api_key != "YOUR_OPENAI_API_KEY_HERE":
             try:
                 self.ai_advisor = AIFixAdvisor(
-                    api_key=self.config['ai_analysis']['openai_api_key'],
-                    model=self.config['ai_analysis'].get('model', 'gpt-3.5-turbo'),
-                    max_tokens=self.config['ai_analysis'].get('max_tokens', 150),
-                    temperature=self.config['ai_analysis'].get('temperature', 0.1)
+                    api_key=openai_api_key,
+                    model=self.config.get('ai_analysis', {}).get('model', 'gpt-4o-mini'),
+                    max_tokens=self.config.get('ai_analysis', {}).get('max_tokens', 150),
+                    temperature=self.config.get('ai_analysis', {}).get('temperature', 0.1)
                 )
-                self.logger.info("🧠 AI advisor initialized successfully")
+                api_source = "environment variable" if os.getenv('OPENAI_API_KEY') or os.getenv('OPENAI_API_KEY_EGOV') else "config file"
+                self.logger.info(f"🧠 AI advisor initialized successfully (API key from {api_source})")
             except Exception as e:
                 self.logger.warning(f"Failed to initialize AI advisor: {str(e)}")
                 self.ai_advisor = None

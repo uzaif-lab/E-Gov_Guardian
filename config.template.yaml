@@ -1,4 +1,8 @@
-# E-Gov Guardian Security Scanner Configuration
+# E-Gov Guardian Security Scanner Configuration Template
+#
+# SECURITY NOTICE:
+# This is a template file. Copy this to 'config.yaml' and fill in your actual values.
+# NEVER commit config.yaml with real API keys to version control!
 
 # OWASP ZAP Configuration (Optional - enhanced scanning)
 zap:
@@ -18,7 +22,7 @@ alternative_scanners:
 # AI Analysis Configuration
 ai_analysis:
   enabled: false # Will be toggled by user in web interface
-  openai_api_key: "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"
+  openai_api_key: "YOUR_OPENAI_API_KEY_HERE" # Replace with your actual OpenAI API key
   model: "gpt-4o-mini" # Using GPT-4o-mini for better quality recommendations
   max_tokens: 150 # Keep recommendations short (1-2 lines)
   temperature: 0.1 # Low temperature for consistent technical advice

@@ -1,0 +1,82 @@
+# API Keys and Sensitive Configuration
+config.yaml
+.env
+.env.local
+.env.production
+*.key
+*.pem
+
+# OpenAI API Keys (extra protection)
+**/openai_api_key*
+**/*api_key*
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+.ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Scanner Reports (may contain sensitive data)
+reports/
+*.pdf
+*.html
+scan_results_*
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Security scanner cache
+.scanner_cache/
+scan_status.json
+scan_results.json 
