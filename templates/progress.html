@@ -108,17 +108,13 @@ let scanCompleted = false; // Global flag to prevent further polling
 const MAX_POLLS = 150; // 5 minutes at 2-second intervals
 
 function updateProgress() {
-    // CRITICAL: Check if scan is already completed or polling has been stopped
     if (scanCompleted || !pollInterval) {
-        console.log('Scan already completed or polling stopped, exiting updateProgress()');
         return;
     }
     
     pollCount++;
     
-    // Timeout protection - if we've been polling too long, stop polling
     if (pollCount > MAX_POLLS) {
-        console.log('Polling timeout reached, stopping...');
         clearInterval(pollInterval);
         pollInterval = null;
         addLogEntry('[ERROR] Scan timeout - please try again');
@@ -133,20 +129,6 @@ function updateProgress() {
     fetch(`/api/scan-status/${scanId}`)
         .then(response => response.json())
         .then(data => {
-            // Debug logging to see what we're receiving
-            console.log('Status received:', data);
-            addLogEntry(`[DEBUG] Received status: ${data.status}, progress: ${data.progress}`);
-            
-            // Extra debugging for completion detection
-            if (data.status === 'completed' || data.progress === 100) {
-                console.log('COMPLETION DETECTED:', {
-                    status: data.status,
-                    progress: data.progress,
-                    statusCheck: data.status === 'completed',
-                    progressCheck: data.progress === 100,
-                    scanCompleted: scanCompleted
-                });
-            }
             
             const progressBar = document.getElementById('progress-bar');
             const statusText = document.getElementById('status-text');
@@ -169,37 +151,30 @@ function updateProgress() {
                     updatePhase(3);
                 }
                 
-                // Add some simulated log entries
                 if (progress === 25) {
-                    addLogEntry('[INFO] URL discovery phase completed');
+                    addLogEntry('[INFO] Discovery phase completed');
                 } else if (progress === 50) {
                     addLogEntry('[INFO] Vulnerability testing in progress...');
                 } else if (progress === 75) {
-                    addLogEntry('[INFO] Report generation started');
+                    addLogEntry('[INFO] Generating security report...');
                 }
                 
             } else if (data.status === 'completed' || data.progress === 100) {
                 addLogEntry('[SUCCESS] Scan completed successfully!');
                 
-                // CRITICAL: Set completion flag and stop polling immediately
                 scanCompleted = true;
                 if (pollInterval) {
                     clearInterval(pollInterval);
                     pollInterval = null;
                 }
                 
-                // IMMEDIATE REDIRECT - No complex DOM manipulation
-                addLogEntry('[REDIRECT] Redirecting to results...');
-                console.log('IMMEDIATE REDIRECT TO:', `/results/${scanId}`);
+                addLogEntry('[INFO] Redirecting to results page...');
                 
                 try {
-                    // Direct redirect - no delays, no complex logic
                     window.location.href = `/results/${scanId}`;
                 } catch (e) {
-                    console.error('Redirect error:', e);
                     addLogEntry('[ERROR] Redirect failed, showing button...');
                     
-                    // Fallback: Simple button
                     setTimeout(() => {
                         const btn = document.createElement('button');
                         btn.innerHTML = 'VIEW RESULTS';
@@ -209,7 +184,7 @@ function updateProgress() {
                     }, 500);
                 }
                 
-                return; // Stop execution here
+                return;
                 
             } else if (data.status === 'not_found') {
                 addLogEntry('[WARNING] Scan status not found - scan may have completed');
@@ -231,18 +206,13 @@ function updateProgress() {
                     window.location.href = '/';
                 };
             } else {
-                // Handle any other unexpected status
-                console.log(`Unexpected status: ${data.status}`);
                 addLogEntry(`[WARNING] Unexpected status: ${data.status} - continuing to monitor...`);
             }
         })
         .catch(error => {
-            // Don't log errors if scan is already completed
             if (scanCompleted) {
-                console.log('Ignoring error after completion:', error);
                 return;
             }
-            console.error('Error fetching scan status:', error);
             addLogEntry('[ERROR] Connection error - retrying...');
         });
 }
@@ -320,8 +290,8 @@ document.addEventListener('DOMContentLoaded', function() {
     pollInterval = setInterval(updateProgress, 2000); // Poll every 2 seconds
     
     addLogEntry('Security scan initiated');
-    addLogEntry('Target URL validation successful');
-    addLogEntry('Starting comprehensive security assessment...');
+    addLogEntry('Target validation successful');
+    addLogEntry('Starting security assessment...');
 });
 
 // Cleanup on page unload
