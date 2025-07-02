@@ -6,11 +6,11 @@ A web-based security scanner with PDF report generation
 
 import os
 import json
-import tempfile
+# tempfile not needed - using in-memory storage
 import threading
 import uuid
-from datetime import datetime
-from flask import Flask, render_template, request, jsonify, send_file, flash, redirect, url_for
+from datetime import datetime, timedelta
+from flask import Flask, render_template, request, jsonify, send_file, flash, redirect, url_for, session
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, BooleanField, SubmitField
 from wtforms.validators import DataRequired, URL
@@ -21,50 +21,47 @@ from pathlib import Path
 
 # Import our scanner
 from scanner.main_scanner import SecurityScanner
-from scanner.report_generator import ReportGenerator
+# ReportGenerator not needed - using in-memory PDF generation
 
 app = Flask(__name__)
-app.secret_key = 'your-secret-key-change-this-in-production'
+app.secret_key = 'egov-guardian-security-scanner-in-memory-2024'
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)  # Sessions auto-expire
 
-# Configuration
-UPLOAD_FOLDER = 'temp_scans'
-ALLOWED_EXTENSIONS = {'json'}
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
-
-# Ensure upload folder exists
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-# Persistent storage for scan status and results to handle Flask debug mode reloads
-import json
-import tempfile
-
-def get_scan_status_file():
-    return os.path.join(tempfile.gettempdir(), 'egov_scan_status.json')
-
-def get_scan_results_file():
-    return os.path.join(tempfile.gettempdir(), 'egov_scan_results.json')
+# In-memory operation - no persistent file storage required
 
 def load_scan_status():
-    try:
-        with open(get_scan_status_file(), 'r') as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
+    """Load scan status from in-memory global storage"""
+    return scan_status
 
 def save_scan_status(status_dict):
-    with open(get_scan_status_file(), 'w') as f:
-        json.dump(status_dict, f)
+    """Save scan status to in-memory global storage"""
+    global scan_status
+    scan_status.update(status_dict)
 
 def load_scan_results():
-    try:
-        with open(get_scan_results_file(), 'r') as f:
-            return json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {}
+    """Load scan results from in-memory global storage"""
+    return scan_results
 
 def save_scan_results(results_dict):
-    with open(get_scan_results_file(), 'w') as f:
-        json.dump(results_dict, f)
+    """Save scan results to in-memory global storage"""
+    global scan_results
+    scan_results.update(results_dict)
+    cleanup_old_scans()
+
+def cleanup_old_scans():
+    """Clean up scan data older than 2 hours to prevent memory buildup"""
+    import time
+    current_time = time.time()
+    cutoff_time = current_time - (2 * 60 * 60)  # 2 hours ago
+    
+    # Clean up old scan statuses
+    global scan_status, scan_results
+    scan_status = {k: v for k, v in scan_status.items() 
+                   if v.get('timestamp', current_time) > cutoff_time}
+    
+    # Clean up old scan results
+    scan_results = {k: v for k, v in scan_results.items() 
+                    if v.get('scan_info', {}).get('timestamp_numeric', current_time) > cutoff_time}
 
 def transform_scanner_results(scanner_output):
     """Transform scanner output to match web template format"""
@@ -152,9 +149,9 @@ def transform_scanner_results(scanner_output):
     
     return web_format
 
-# Initialize from persistent storage
-scan_status = load_scan_status()
-scan_results = load_scan_results()
+# In-memory globals (session-based storage)
+scan_status = {}
+scan_results = {}
 
 class ScanForm(FlaskForm):
     """Form for URL scanning"""
@@ -164,17 +161,21 @@ class ScanForm(FlaskForm):
     scan_type = SelectField('Scan Type', choices=[('url', 'Web Application')])
     submit = SubmitField('Start Security Scan')
 
-def generate_pdf_report(json_data, output_path):
-    """Generate PDF report from JSON data using ReportLab"""
+def generate_pdf_report_in_memory(json_data):
+    """Generate PDF report from JSON data in memory using ReportLab"""
     from reportlab.lib.pagesizes import letter, A4
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import inch
     from reportlab.lib import colors
     from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from io import BytesIO
     
-    # Create PDF document
-    doc = SimpleDocTemplate(output_path, pagesize=A4)
+    # Create in-memory buffer
+    buffer = BytesIO()
+    
+    # Create PDF document in memory
+    doc = SimpleDocTemplate(buffer, pagesize=A4)
     story = []
     styles = getSampleStyleSheet()
     
@@ -294,8 +295,12 @@ def generate_pdf_report(json_data, output_path):
             story.append(Paragraph(f"{i}. {rec}", styles['Normal']))
             story.append(Spacer(1, 6))
     
-    # Build PDF
+    # Build PDF in memory
     doc.build(story)
+    
+    # Return buffer positioned at start
+    buffer.seek(0)
+    return buffer
 
 def run_scan_async(scan_id, target_url, deep_scan):
     """Run security scan asynchronously"""
@@ -303,7 +308,14 @@ def run_scan_async(scan_id, target_url, deep_scan):
     logger = logging.getLogger(__name__)
     
     try:
-        scan_status[scan_id] = {'status': 'running', 'progress': 0}
+        import time
+        current_timestamp = time.time()
+        
+        scan_status[scan_id] = {
+            'status': 'running', 
+            'progress': 0, 
+            'timestamp': current_timestamp
+        }
         save_scan_status(scan_status)
         logger.info(f"Starting scan for {target_url}")
         
@@ -358,6 +370,11 @@ def run_scan_async(scan_id, target_url, deep_scan):
         # Transform scanner results to match template format
         web_results = transform_scanner_results(result)
         
+        # Add timestamp for cleanup
+        if 'scan_info' not in web_results:
+            web_results['scan_info'] = {}
+        web_results['scan_info']['timestamp_numeric'] = current_timestamp
+        
         scan_status[scan_id]['progress'] = 100
         scan_status[scan_id]['status'] = 'completed'
         save_scan_status(scan_status)
@@ -372,7 +389,11 @@ def run_scan_async(scan_id, target_url, deep_scan):
         logger.error(f"Scan failed for {target_url}: {str(e)}")
         import traceback
         logger.error(f"Full traceback: {traceback.format_exc()}")
-        scan_status[scan_id] = {'status': 'error', 'error': str(e)}
+        scan_status[scan_id] = {
+            'status': 'error', 
+            'error': str(e),
+            'timestamp': time.time()
+        }
         save_scan_status(scan_status)
 
 @app.route('/')
@@ -414,12 +435,9 @@ def scan_progress(scan_id):
 @app.route('/api/scan-status/<scan_id>')
 def get_scan_status(scan_id):
     """API endpoint for scan status"""
-    # Reload status from persistent storage in case of Flask reload
-    global scan_status
     scan_status = load_scan_status()
-    
     status = scan_status.get(scan_id, {'status': 'not_found'})
-    # Debug logging to see what status is being returned
+    
     import logging
     logger = logging.getLogger(__name__)
     logger.info(f"Status API called for {scan_id}: {status}")
@@ -432,10 +450,7 @@ def scan_results_page(scan_id):
     logger = logging.getLogger(__name__)
     logger.info(f"Results page requested for scan_id: {scan_id}")
     
-    # Reload results from persistent storage in case of Flask reload
-    global scan_results
     scan_results = load_scan_results()
-    
     logger.info(f"Available scan results: {list(scan_results.keys())}")
     
     if scan_id not in scan_results:
@@ -449,24 +464,29 @@ def scan_results_page(scan_id):
 
 @app.route('/download/<scan_id>')
 def download_report(scan_id):
-    """Download PDF report"""
-    # Reload results from persistent storage in case of Flask reload
-    global scan_results
+    """Download PDF report - generated in memory"""
     scan_results = load_scan_results()
     
     if scan_id not in scan_results:
         flash('Scan results not found.', 'error')
         return redirect(url_for('index'))
     
-    # Generate PDF
-    results = scan_results[scan_id]
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    pdf_filename = f"security_report_{timestamp}.pdf"
-    pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], pdf_filename)
-    
     try:
-        generate_pdf_report(results, pdf_path)
-        return send_file(pdf_path, as_attachment=True, download_name=pdf_filename)
+        # Generate PDF in memory
+        results = scan_results[scan_id]
+        pdf_buffer = generate_pdf_report_in_memory(results)
+        
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        pdf_filename = f"security_report_{timestamp}.pdf"
+        
+        # Return PDF directly from memory - no file storage
+        return send_file(
+            pdf_buffer,
+            as_attachment=True,
+            download_name=pdf_filename,
+            mimetype='application/pdf'
+        )
     except Exception as e:
         flash(f'Error generating PDF: {str(e)}', 'error')
         return redirect(url_for('scan_results_page', scan_id=scan_id))
@@ -478,10 +498,7 @@ def get_scan_results_api(scan_id):
     logger = logging.getLogger(__name__)
     logger.info(f"API Results requested for scan_id: {scan_id}")
     
-    # Reload results from persistent storage in case of Flask reload
-    global scan_results
     scan_results = load_scan_results()
-    
     logger.info(f"Available results in API: {list(scan_results.keys())}")
     
     if scan_id not in scan_results:

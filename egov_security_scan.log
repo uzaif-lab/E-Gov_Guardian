@@ -581,3 +581,66 @@
 2025-07-02 15:54:48,963 - INFO - Available scan results: ['528f9aa7-9b58-48e3-8045-8866f61f90bd', '80e5592d-a9de-4b5f-aaa2-43858bbeb0f2', 'deb2b506-d7b3-499a-8e9d-516c83bc343d', '6551329c-9cf2-4ff9-92cb-8059811db4fe', 'eac58a73-1e69-41a7-9ad3-f23464faf353', '594016f1-4d14-4a84-96c6-cbf49e06abfc', '7e9f8ae9-35ef-4f73-950b-16ed852f7511', 'f3ba0d31-93ec-4949-96f4-fc0359cff7c1', '302d5657-bca8-483e-94c1-97722f8d31ce', '8bc742a8-9796-4a7e-94c8-afe6b10a19b3', '653a9df0-921f-4954-8b30-2bde4f6b41b7', '9a028ce7-c604-4397-a6f7-ea4cd4025552', 'c518d45d-7c61-4390-a2ae-3e9eb8e6e4fc', 'b7aa1c74-99f8-4a86-8a2d-bb9fc6e73267']
 2025-07-02 15:54:48,965 - INFO - Returning results page for scan_id: b7aa1c74-99f8-4a86-8a2d-bb9fc6e73267
 2025-07-02 15:54:48,969 - INFO - 127.0.0.1 - - [02/Jul/2025 15:54:48] "GET /results/b7aa1c74-99f8-4a86-8a2d-bb9fc6e73267 HTTP/1.1" 200 -
+2025-07-02 16:23:19,981 - INFO - Calling scanner.scan_url() for https://imatmocktests.vercel.app/
+2025-07-02 16:23:19,983 - INFO - Starting security assessment for: https://imatmocktests.vercel.app/
+2025-07-02 16:23:20,126 - INFO - 127.0.0.1 - - [02/Jul/2025 16:23:20] "GET /scan/d74812f5-6447-4091-9ad7-a982feeda89a HTTP/1.1" 200 -
+2025-07-02 16:23:21,409 - INFO - Phase 1: Reconnaissance and Discovery
+2025-07-02 16:23:21,409 - INFO - Phase 2: Active Vulnerability Assessment
+2025-07-02 16:23:21,410 - INFO - Starting built-in API scan for: https://imatmocktests.vercel.app/
+2025-07-02 16:23:22,171 - INFO - Status API called for d74812f5-6447-4091-9ad7-a982feeda89a: {'status': 'scanning', 'progress': 25, 'timestamp': 1751453599.872393}
+2025-07-02 16:23:22,172 - INFO - 127.0.0.1 - - [02/Jul/2025 16:23:22] "GET /api/scan-status/d74812f5-6447-4091-9ad7-a982feeda89a HTTP/1.1" 200 -
+2025-07-02 16:23:24,483 - INFO - Status API called for d74812f5-6447-4091-9ad7-a982feeda89a: {'status': 'scanning', 'progress': 25, 'timestamp': 1751453599.872393}
+2025-07-02 16:23:24,484 - INFO - 127.0.0.1 - - [02/Jul/2025 16:23:24] "GET /api/scan-status/d74812f5-6447-4091-9ad7-a982feeda89a HTTP/1.1" 200 -
+2025-07-02 16:23:25,088 - INFO - Phase 3: Security Configuration Analysis
+2025-07-02 16:23:25,644 - INFO - Analyzing SSL/TLS configuration...
+2025-07-02 16:23:25,837 - INFO - Phase 4: Infrastructure Assessment
+2025-07-02 16:23:26,174 - INFO - Status API called for d74812f5-6447-4091-9ad7-a982feeda89a: {'status': 'scanning', 'progress': 25, 'timestamp': 1751453599.872393}
+2025-07-02 16:23:26,175 - INFO - 127.0.0.1 - - [02/Jul/2025 16:23:26] "GET /api/scan-status/d74812f5-6447-4091-9ad7-a982feeda89a HTTP/1.1" 200 -
+2025-07-02 16:23:28,482 - INFO - Status API called for d74812f5-6447-4091-9ad7-a982feeda89a: {'status': 'scanning', 'progress': 25, 'timestamp': 1751453599.872393}
+2025-07-02 16:23:28,483 - INFO - 127.0.0.1 - - [02/Jul/2025 16:23:28] "GET /api/scan-status/d74812f5-6447-4091-9ad7-a982feeda89a HTTP/1.1" 200 -
+2025-07-02 16:23:28,818 - INFO - Phase 5: Analysis and Risk Assessment
+2025-07-02 16:23:28,819 - INFO - Scanner.scan_url() completed for https://imatmocktests.vercel.app/
+2025-07-02 16:23:28,820 - INFO - Scan completed successfully for https://imatmocktests.vercel.app/
+2025-07-02 16:23:28,820 - INFO - Results saved for scan_id: d74812f5-6447-4091-9ad7-a982feeda89a
+2025-07-02 16:23:28,821 - INFO - Transformed result keys: ['target', 'executive_summary', 'vulnerabilities', 'scan_info']
+2025-07-02 16:23:30,493 - INFO - Status API called for d74812f5-6447-4091-9ad7-a982feeda89a: {'status': 'completed', 'progress': 100, 'timestamp': 1751453599.872393}
+2025-07-02 16:23:30,495 - INFO - 127.0.0.1 - - [02/Jul/2025 16:23:30] "GET /api/scan-status/d74812f5-6447-4091-9ad7-a982feeda89a HTTP/1.1" 200 -
+2025-07-02 16:23:30,760 - INFO - Results page requested for scan_id: d74812f5-6447-4091-9ad7-a982feeda89a
+2025-07-02 16:23:30,761 - INFO - Available scan results: ['d74812f5-6447-4091-9ad7-a982feeda89a']
+2025-07-02 16:23:30,762 - INFO - Returning results page for scan_id: d74812f5-6447-4091-9ad7-a982feeda89a
+2025-07-02 16:23:30,803 - INFO - 127.0.0.1 - - [02/Jul/2025 16:23:30] "GET /results/d74812f5-6447-4091-9ad7-a982feeda89a HTTP/1.1" 200 -
+2025-07-02 16:23:44,081 - INFO - 127.0.0.1 - - [02/Jul/2025 16:23:44] "GET /download/d74812f5-6447-4091-9ad7-a982feeda89a HTTP/1.1" 200 -
+2025-07-02 16:24:36,883 - INFO - Results page requested for scan_id: d74812f5-6447-4091-9ad7-a982feeda89a
+2025-07-02 16:24:36,883 - INFO - Available scan results: ['d74812f5-6447-4091-9ad7-a982feeda89a']
+2025-07-02 16:24:36,884 - INFO - Returning results page for scan_id: d74812f5-6447-4091-9ad7-a982feeda89a
+2025-07-02 16:24:36,887 - INFO - 127.0.0.1 - - [02/Jul/2025 16:24:36] "GET /results/d74812f5-6447-4091-9ad7-a982feeda89a HTTP/1.1" 200 -
+2025-07-02 16:24:41,217 - INFO - Results page requested for scan_id: d74812f5-6447-4091-9ad7-a982feeda89a
+2025-07-02 16:24:41,217 - INFO - Available scan results: ['d74812f5-6447-4091-9ad7-a982feeda89a']
+2025-07-02 16:24:41,218 - INFO - Returning results page for scan_id: d74812f5-6447-4091-9ad7-a982feeda89a
+2025-07-02 16:24:41,220 - INFO - 127.0.0.1 - - [02/Jul/2025 16:24:41] "GET /results/d74812f5-6447-4091-9ad7-a982feeda89a HTTP/1.1" 200 -
+2025-07-02 16:24:46,567 - INFO - 127.0.0.1 - - [02/Jul/2025 16:24:46] "GET / HTTP/1.1" 200 -
+2025-07-02 16:26:08,507 - INFO - Calling scanner.scan_url() for https://imatmocktests.vercel.app/
+2025-07-02 16:26:08,508 - INFO - Starting security assessment for: https://imatmocktests.vercel.app/
+2025-07-02 16:26:08,671 - INFO - 127.0.0.1 - - [02/Jul/2025 16:26:08] "GET /scan/04f5ffe1-5b1c-4cb9-9041-ce953d4401e5 HTTP/1.1" 200 -
+2025-07-02 16:26:08,825 - INFO - Phase 1: Reconnaissance and Discovery
+2025-07-02 16:26:08,826 - INFO - Phase 2: Active Vulnerability Assessment
+2025-07-02 16:26:08,826 - INFO - Starting built-in API scan for: https://imatmocktests.vercel.app/
+2025-07-02 16:26:10,427 - INFO - Phase 3: Security Configuration Analysis
+2025-07-02 16:26:10,962 - INFO - Analyzing SSL/TLS configuration...
+2025-07-02 16:26:11,024 - INFO - Status API called for 04f5ffe1-5b1c-4cb9-9041-ce953d4401e5: {'status': 'scanning', 'progress': 25, 'timestamp': 1751453768.4007692}
+2025-07-02 16:26:11,025 - INFO - 127.0.0.1 - - [02/Jul/2025 16:26:11] "GET /api/scan-status/04f5ffe1-5b1c-4cb9-9041-ce953d4401e5 HTTP/1.1" 200 -
+2025-07-02 16:26:11,148 - INFO - Phase 4: Infrastructure Assessment
+2025-07-02 16:26:12,720 - INFO - Status API called for 04f5ffe1-5b1c-4cb9-9041-ce953d4401e5: {'status': 'scanning', 'progress': 25, 'timestamp': 1751453768.4007692}
+2025-07-02 16:26:12,722 - INFO - 127.0.0.1 - - [02/Jul/2025 16:26:12] "GET /api/scan-status/04f5ffe1-5b1c-4cb9-9041-ce953d4401e5 HTTP/1.1" 200 -
+2025-07-02 16:26:13,678 - INFO - Phase 5: Analysis and Risk Assessment
+2025-07-02 16:26:13,679 - INFO - Scanner.scan_url() completed for https://imatmocktests.vercel.app/
+2025-07-02 16:26:13,679 - INFO - Scan completed successfully for https://imatmocktests.vercel.app/
+2025-07-02 16:26:13,680 - INFO - Results saved for scan_id: 04f5ffe1-5b1c-4cb9-9041-ce953d4401e5
+2025-07-02 16:26:13,680 - INFO - Transformed result keys: ['target', 'executive_summary', 'vulnerabilities', 'scan_info']
+2025-07-02 16:26:15,030 - INFO - Status API called for 04f5ffe1-5b1c-4cb9-9041-ce953d4401e5: {'status': 'completed', 'progress': 100, 'timestamp': 1751453768.4007692}
+2025-07-02 16:26:15,031 - INFO - 127.0.0.1 - - [02/Jul/2025 16:26:15] "GET /api/scan-status/04f5ffe1-5b1c-4cb9-9041-ce953d4401e5 HTTP/1.1" 200 -
+2025-07-02 16:26:15,295 - INFO - Results page requested for scan_id: 04f5ffe1-5b1c-4cb9-9041-ce953d4401e5
+2025-07-02 16:26:15,296 - INFO - Available scan results: ['04f5ffe1-5b1c-4cb9-9041-ce953d4401e5']
+2025-07-02 16:26:15,296 - INFO - Returning results page for scan_id: 04f5ffe1-5b1c-4cb9-9041-ce953d4401e5
+2025-07-02 16:26:15,333 - INFO - 127.0.0.1 - - [02/Jul/2025 16:26:15] "GET /results/04f5ffe1-5b1c-4cb9-9041-ce953d4401e5 HTTP/1.1" 200 -
+2025-07-02 16:26:28,537 - INFO - 127.0.0.1 - - [02/Jul/2025 16:26:28] "GET /download/04f5ffe1-5b1c-4cb9-9041-ce953d4401e5 HTTP/1.1" 200 -
