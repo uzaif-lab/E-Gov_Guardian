@@ -1,0 +1,58 @@
+zap:
+  enabled: false # Set to false to disable ZAP dependency
+  host: "127.0.0.1"
+  port: 8080
+  api_key: null # Set if ZAP authentication is enabled
+  docker_mode: true # Use Docker-based ZAP API
+  timeout: 300
+
+# Alternative API-based scanning services
+alternative_scanners:
+  enabled: true
+  use_builtin_checks: true # Use built-in vulnerability checks
+  online_apis:
+    enabled: false # Set to true to use online scanning APIs
+    # Add your preferred online scanning service APIs here
+
+scanner:
+  max_scan_time: 1800 # 30 minutes
+  max_depth: 5
+  thread_count: 10
+
+vulnerabilities:
+  sql_injection:
+    enabled: true
+    severity_threshold: "Medium"
+
+  xss:
+    enabled: true
+    severity_threshold: "Medium"
+
+  insecure_headers:
+    enabled: true
+    check_headers:
+      - "X-Frame-Options"
+      - "X-Content-Type-Options"
+      - "X-XSS-Protection"
+      - "Strict-Transport-Security"
+      - "Content-Security-Policy"
+
+  insecure_cookies:
+    enabled: true
+    check_flags:
+      - "HttpOnly"
+      - "Secure"
+      - "SameSite"
+
+  port_scan:
+    enabled: true
+    common_ports: [21, 22, 23, 25, 53, 80, 110, 443, 993, 995, 8080, 8443]
+
+  malware_check:
+    enabled: true
+    scan_extensions: [".exe", ".dll", ".bat", ".cmd", ".scr", ".pif", ".com"]
+
+reporting:
+  output_format: "json" # json, html, csv
+  detailed_report: true
+  include_screenshots: false

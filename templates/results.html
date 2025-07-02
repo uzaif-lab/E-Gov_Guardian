@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+
+{% block title %}Security Assessment Results - E-Gov Guardian{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12">
+        <!-- Executive Summary Card -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h2 class="mb-0">
+                            <i class="fas fa-shield-alt me-2"></i>
+                            Security Assessment Results
+                        </h2>
+                        <p class="mb-0 mt-2 opacity-75">
+                            Target: {{ results.target }}
+                        </p>
+                    </div>
+                    <div class="col-auto">
+                        <a href="{{ url_for('download_report', scan_id=scan_id) }}" class="btn btn-success btn-lg">
+                            <i class="fas fa-download me-2"></i>
+                            Download PDF Report
+                        </a>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            {% set risk_color = 'success' if results.executive_summary.risk_rating == 'LOW' 
+                                           else 'warning' if results.executive_summary.risk_rating == 'MEDIUM'
+                                           else 'danger' %}
+                            <h3 class="text-{{ risk_color }} mb-1">
+                                {{ results.executive_summary.risk_rating }}
+                            </h3>
+                            <small class="text-muted">Risk Rating</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            {% set score_color = 'success' if results.executive_summary.compliance_score >= 80
+                                            else 'warning' if results.executive_summary.compliance_score >= 60
+                                            else 'danger' %}
+                            <h3 class="text-{{ score_color }} mb-1">
+                                {{ results.executive_summary.compliance_score }}/100
+                            </h3>
+                            <small class="text-muted">Compliance Score</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <h3 class="text-primary mb-1">
+                                {{ results.executive_summary.total_vulnerabilities }}
+                            </h3>
+                            <small class="text-muted">Total Issues</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center p-3 border rounded">
+                            <h3 class="text-info mb-1">
+                                {{ results.scan_info.duration }}s
+                            </h3>
+                            <small class="text-muted">Scan Duration</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Vulnerability Breakdown -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-pie me-2"></i>
+                            Vulnerability Breakdown
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% set severity_counts = {} %}
+                        {% for vuln in results.vulnerabilities %}
+                            {% set severity = vuln.severity.upper() %}
+                            {% if severity in severity_counts %}
+                                {% set _ = severity_counts.update({severity: severity_counts[severity] + 1}) %}
+                            {% else %}
+                                {% set _ = severity_counts.update({severity: 1}) %}
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% for severity in ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'] %}
+                            {% set count = severity_counts.get(severity, 0) %}
+                            {% if count > 0 %}
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="fw-bold severity-{{ severity.lower() }}">
+                                        <i class="fas fa-circle me-2"></i>{{ severity }}
+                                    </span>
+                                    <span class="badge bg-secondary">{{ count }}</span>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card h-100">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-lightbulb me-2"></i>
+                            Key Recommendations
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-unstyled">
+                            {% for recommendation in results.executive_summary.recommendations[:5] %}
+                                <li class="mb-2">
+                                    <i class="fas fa-arrow-right text-primary me-2"></i>
+                                    {{ recommendation }}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Vulnerabilities -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-bug me-2"></i>
+                    Detailed Security Findings
+                    <span class="badge bg-primary ms-2">{{ results.vulnerabilities|length }} Issues</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if results.vulnerabilities %}
+                    {% for vulnerability in results.vulnerabilities %}
+                        <div class="vulnerability-card card mb-3 severity-{{ vulnerability.severity.lower() }}">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <h6 class="card-title">
+                                            <i class="fas fa-exclamation-triangle me-2"></i>
+                                            {{ vulnerability.type }}
+                                        </h6>
+                                        <p class="card-text text-muted mb-2">
+                                            {{ vulnerability.description }}
+                                        </p>
+                                        <small class="text-muted">
+                                            <i class="fas fa-map-marker-alt me-1"></i>
+                                            Location: {{ vulnerability.location }}
+                                        </small>
+                                    </div>
+                                    <div class="col-md-4 text-end">
+                                        {% set severity = vulnerability.severity.upper() %}
+                                        {% if severity == 'CRITICAL' %}
+                                            <span class="badge bg-danger fs-6">{{ severity }}</span>
+                                        {% elif severity == 'HIGH' %}
+                                            <span class="badge bg-orange fs-6" style="background-color: #ea580c !important;">{{ severity }}</span>
+                                        {% elif severity == 'MEDIUM' %}
+                                            <span class="badge bg-warning fs-6">{{ severity }}</span>
+                                        {% elif severity == 'LOW' %}
+                                            <span class="badge bg-success fs-6">{{ severity }}</span>
+                                        {% else %}
+                                            <span class="badge bg-info fs-6">{{ severity }}</span>
+                                        {% endif %}
+                                        
+                                        {% if vulnerability.get('details') %}
+                                            <button class="btn btn-sm btn-outline-secondary ms-2" 
+                                                    data-bs-toggle="collapse" 
+                                                    data-bs-target="#details-{{ loop.index }}">
+                                                <i class="fas fa-eye"></i> Details
+                                            </button>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                {% if vulnerability.get('details') %}
+                                    <div class="collapse mt-3" id="details-{{ loop.index }}">
+                                        <div class="border-top pt-3">
+                                            <h6>Technical Details:</h6>
+                                            <pre class="bg-light p-2 rounded"><code>{{ vulnerability.details }}</code></pre>
+                                            
+                                            {% if vulnerability.get('remediation') %}
+                                                <h6 class="mt-3">Remediation:</h6>
+                                                <p class="text-muted">{{ vulnerability.remediation }}</p>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-shield-alt text-success fa-3x mb-3"></i>
+                        <h4 class="text-success">No Vulnerabilities Detected!</h4>
+                        <p class="text-muted">Your application appears to be secure from common vulnerabilities.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Scan Information -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Scan Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Target URL:</strong></td>
+                                <td>{{ results.target }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Scan Date:</strong></td>
+                                <td>{{ results.scan_info.timestamp }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Scanner Version:</strong></td>
+                                <td>{{ results.scan_info.scanner_version }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Duration:</strong></td>
+                                <td>{{ results.scan_info.duration }} seconds</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Tests Performed:</strong></td>
+                                <td>{{ results.scan_info.total_checks }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Scan Type:</strong></td>
+                                <td>{{ results.scan_info.scan_type }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="text-center mt-4 mb-4">
+            <a href="{{ url_for('index') }}" class="btn btn-primary me-3">
+                <i class="fas fa-plus me-2"></i>New Scan
+            </a>
+            <a href="{{ url_for('download_report', scan_id=scan_id) }}" class="btn btn-success me-3">
+                <i class="fas fa-download me-2"></i>Download PDF
+            </a>
+            <button class="btn btn-outline-secondary" onclick="window.print()">
+                <i class="fas fa-print me-2"></i>Print Results
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto-refresh functionality (optional)
+function refreshResults() {
+    // Could implement auto-refresh of results if needed
+    console.log('Results page loaded');
+}
+
+// Print optimization
+window.addEventListener('beforeprint', function() {
+    // Hide unnecessary elements when printing
+    document.querySelectorAll('.btn, .navbar').forEach(el => {
+        el.style.display = 'none';
+    });
+});
+
+window.addEventListener('afterprint', function() {
+    // Restore elements after printing
+    document.querySelectorAll('.btn, .navbar').forEach(el => {
+        el.style.display = '';
+    });
+});
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    refreshResults();
+    
+    // Add success notification for completed scan
+    if ({{ results.vulnerabilities|length }} === 0) {
+        // Show celebration for clean scan
+        console.log('Clean security scan completed!');
+    }
+});
+</script>
+
+<style>
+/* Custom styles for vulnerability severity indicators */
+.severity-critical { 
+    border-left-color: #dc2626 !important; 
+}
+.severity-high { 
+    border-left-color: #ea580c !important; 
+}
+.severity-medium { 
+    border-left-color: #d97706 !important; 
+}
+.severity-low { 
+    border-left-color: #059669 !important; 
+}
+.severity-info { 
+    border-left-color: #0284c7 !important; 
+}
+
+/* Print styles */
+@media print {
+    .btn, .navbar, .footer {
+        display: none !important;
+    }
+    
+    .card {
+        border: 1px solid #ddd !important;
+        box-shadow: none !important;
+    }
+    
+    .vulnerability-card {
+        page-break-inside: avoid;
+    }
+}
+
+/* Custom badge colors */
+.bg-orange {
+    background-color: #ea580c !important;
+}
+
+/* Code blocks */
+pre code {
+    font-size: 0.875rem;
+    color: #333;
+}
+
+/* Vulnerability cards hover effect */
+.vulnerability-card:hover {
+    transform: translateY(-2px);
+    transition: transform 0.2s ease;
+}
+</style>
+{% endblock %} 

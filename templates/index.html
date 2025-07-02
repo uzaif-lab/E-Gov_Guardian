@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}E-Gov Guardian - Security Scanner{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header text-center">
+                <h2 class="mb-0">
+                    <i class="fas fa-shield-alt me-2"></i>
+                    Security Assessment Portal
+                </h2>
+                <p class="mb-0 mt-2 opacity-75">
+                    Comprehensive security scanning for government web applications
+                </p>
+            </div>
+            <div class="card-body p-4">
+                <div class="row mb-4">
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="bg-light rounded-circle p-3 d-inline-block mb-2">
+                            <i class="fas fa-search text-primary fa-2x"></i>
+                        </div>
+                        <h5>Vulnerability Detection</h5>
+                        <p class="text-muted small">Detect SQL Injection, XSS, and security misconfigurations</p>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="bg-light rounded-circle p-3 d-inline-block mb-2">
+                            <i class="fas fa-file-pdf text-danger fa-2x"></i>
+                        </div>
+                        <h5>PDF Reports</h5>
+                        <p class="text-muted small">Download comprehensive security assessment reports</p>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <div class="bg-light rounded-circle p-3 d-inline-block mb-2">
+                            <i class="fas fa-bolt text-warning fa-2x"></i>
+                        </div>
+                        <h5>Real-time Scanning</h5>
+                        <p class="text-muted small">Live progress updates and instant results</p>
+                    </div>
+                </div>
+
+                <form method="POST" action="{{ url_for('start_scan') }}" class="needs-validation" novalidate>
+                    {{ form.hidden_tag() }}
+                    
+                    <div class="mb-4">
+                        <label for="{{ form.target_url.id }}" class="form-label fw-bold">
+                            <i class="fas fa-globe me-2"></i>Target URL
+                        </label>
+                        {{ form.target_url(class="form-control form-control-lg") }}
+                        {% if form.target_url.errors %}
+                            <div class="invalid-feedback d-block">
+                                {% for error in form.target_url.errors %}
+                                    <small>{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        <div class="form-text">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Enter the complete URL (e.g., https://example.gov)
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="form-check form-switch">
+                                {{ form.deep_scan(class="form-check-input") }}
+                                <label class="form-check-label fw-bold" for="{{ form.deep_scan.id }}">
+                                    <i class="fas fa-microscope me-2"></i>Deep Scan
+                                </label>
+                                <div class="form-text">
+                                    More thorough analysis (takes longer)
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="{{ form.scan_type.id }}" class="form-label fw-bold">
+                                <i class="fas fa-cog me-2"></i>Scan Type
+                            </label>
+                            {{ form.scan_type(class="form-select") }}
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        {{ form.submit(class="btn btn-primary btn-lg") }}
+                    </div>
+                </form>
+
+                <div class="mt-4 p-3 bg-light rounded">
+                    <h6 class="fw-bold mb-2">
+                        <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                        Security Disclaimer
+                    </h6>
+                    <ul class="mb-0 small text-muted">
+                        <li>Only scan websites you own or have explicit permission to test</li>
+                        <li>This tool performs active security testing which may be detected by security systems</li>
+                        <li>Results are stored temporarily for report generation and automatically deleted after 24 hours</li>
+                        <li>For production systems, consider scanning during maintenance windows</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Scans Section (if needed in future) -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-clock me-2"></i>
+                    Quick Start Guide
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="fw-bold text-primary">
+                            <span class="badge bg-primary rounded-circle me-2">1</span>
+                            Enter Target URL
+                        </h6>
+                        <p class="text-muted small mb-3">
+                            Provide the complete URL of the website you want to scan
+                        </p>
+                        
+                        <h6 class="fw-bold text-primary">
+                            <span class="badge bg-primary rounded-circle me-2">2</span>
+                            Configure Scan Options
+                        </h6>
+                        <p class="text-muted small mb-3">
+                            Choose between standard or deep scan based on your needs
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="fw-bold text-primary">
+                            <span class="badge bg-primary rounded-circle me-2">3</span>
+                            Monitor Progress
+                        </h6>
+                        <p class="text-muted small mb-3">
+                            Watch real-time progress as the scanner analyzes your target
+                        </p>
+                        
+                        <h6 class="fw-bold text-primary">
+                            <span class="badge bg-primary rounded-circle me-2">4</span>
+                            Download Report
+                        </h6>
+                        <p class="text-muted small mb-3">
+                            Get a comprehensive PDF report with findings and recommendations
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Form validation
+(function() {
+    'use strict';
+    window.addEventListener('load', function() {
+        var forms = document.getElementsByClassName('needs-validation');
+        var validation = Array.prototype.filter.call(forms, function(form) {
+            form.addEventListener('submit', function(event) {
+                if (form.checkValidity() === false) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                form.classList.add('was-validated');
+            }, false);
+        });
+    }, false);
+})();
+</script>
+{% endblock %} 

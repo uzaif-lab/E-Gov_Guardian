@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+
+{% block title %}Scan in Progress - E-Gov Guardian{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header text-center">
+                <h2 class="mb-0">
+                    <i class="fas fa-cog fa-spin me-2"></i>
+                    Security Scan in Progress
+                </h2>
+                <p class="mb-0 mt-2 opacity-75">
+                    Analyzing target for security vulnerabilities...
+                </p>
+            </div>
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <div class="progress mb-3" style="height: 25px;">
+                        <div id="progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                            0%
+                        </div>
+                    </div>
+                    <p id="status-text" class="text-muted">Initializing scanner...</p>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-4 text-center">
+                        <div id="phase-1" class="scan-phase">
+                            <div class="bg-light rounded-circle p-3 d-inline-block mb-2">
+                                <i class="fas fa-search text-muted fa-2x"></i>
+                            </div>
+                            <h6>Discovery</h6>
+                            <small class="text-muted">Finding endpoints</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <div id="phase-2" class="scan-phase">
+                            <div class="bg-light rounded-circle p-3 d-inline-block mb-2">
+                                <i class="fas fa-bug text-muted fa-2x"></i>
+                            </div>
+                            <h6>Vulnerability Testing</h6>
+                            <small class="text-muted">Active security tests</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <div id="phase-3" class="scan-phase">
+                            <div class="bg-light rounded-circle p-3 d-inline-block mb-2">
+                                <i class="fas fa-file-alt text-muted fa-2x"></i>
+                            </div>
+                            <h6>Report Generation</h6>
+                            <small class="text-muted">Compiling results</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>What's happening?</strong>
+                    <div id="scan-details" class="mt-2">
+                        <ul class="mb-0">
+                            <li>Crawling website structure and discovering endpoints</li>
+                            <li>Testing for common vulnerabilities (SQL Injection, XSS, etc.)</li>
+                            <li>Analyzing security headers and configurations</li>
+                            <li>Checking for known security issues</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="text-center">
+                    <button id="cancel-scan" class="btn btn-outline-danger" onclick="cancelScan()">
+                        <i class="fas fa-stop me-2"></i>Cancel Scan
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Log (hidden by default) -->
+        <div id="live-log" class="card mt-4" style="display: none;">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-terminal me-2"></i>
+                    Live Scan Log
+                    <button class="btn btn-sm btn-outline-secondary float-end" onclick="toggleLog()">
+                        <i class="fas fa-eye"></i> Toggle
+                    </button>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="log-content" class="bg-dark text-light p-3 rounded" style="height: 200px; overflow-y: auto; font-family: monospace; font-size: 12px;">
+                    <!-- Log entries will be added here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let scanId = '{{ scan_id }}';
+let pollInterval;
+let currentPhase = 0;
+let pollCount = 0;
+let scanCompleted = false; // Global flag to prevent further polling
+const MAX_POLLS = 150; // 5 minutes at 2-second intervals
+
+function updateProgress() {
+    // CRITICAL: Check if scan is already completed or polling has been stopped
+    if (scanCompleted || !pollInterval) {
+        console.log('Scan already completed or polling stopped, exiting updateProgress()');
+        return;
+    }
+    
+    pollCount++;
+    
+    // Timeout protection - if we've been polling too long, stop polling
+    if (pollCount > MAX_POLLS) {
+        console.log('Polling timeout reached, stopping...');
+        clearInterval(pollInterval);
+        pollInterval = null;
+        addLogEntry('[ERROR] Scan timeout - please try again');
+        document.getElementById('cancel-scan').innerHTML = 
+            '<i class="fas fa-redo me-2"></i>Return to Home';
+        document.getElementById('cancel-scan').onclick = () => {
+            window.location.href = '/';
+        };
+        return;
+    }
+    
+    fetch(`/api/scan-status/${scanId}`)
+        .then(response => response.json())
+        .then(data => {
+            // Debug logging to see what we're receiving
+            console.log('Status received:', data);
+            addLogEntry(`[DEBUG] Received status: ${data.status}, progress: ${data.progress}`);
+            
+            // Extra debugging for completion detection
+            if (data.status === 'completed' || data.progress === 100) {
+                console.log('COMPLETION DETECTED:', {
+                    status: data.status,
+                    progress: data.progress,
+                    statusCheck: data.status === 'completed',
+                    progressCheck: data.progress === 100,
+                    scanCompleted: scanCompleted
+                });
+            }
+            
+            const progressBar = document.getElementById('progress-bar');
+            const statusText = document.getElementById('status-text');
+            
+            if (data.status === 'running' || data.status === 'scanning') {
+                const progress = data.progress || 0;
+                progressBar.style.width = progress + '%';
+                progressBar.setAttribute('aria-valuenow', progress);
+                progressBar.textContent = progress + '%';
+                
+                // Update status text based on progress
+                if (progress < 25) {
+                    statusText.textContent = 'Initializing scan and discovering endpoints...';
+                    updatePhase(1);
+                } else if (progress < 75) {
+                    statusText.textContent = 'Running vulnerability tests...';
+                    updatePhase(2);
+                } else if (progress < 100) {
+                    statusText.textContent = 'Generating security report...';
+                    updatePhase(3);
+                }
+                
+                // Add some simulated log entries
+                if (progress === 25) {
+                    addLogEntry('[INFO] URL discovery phase completed');
+                } else if (progress === 50) {
+                    addLogEntry('[INFO] Vulnerability testing in progress...');
+                } else if (progress === 75) {
+                    addLogEntry('[INFO] Report generation started');
+                }
+                
+            } else if (data.status === 'completed' || data.progress === 100) {
+                addLogEntry('[SUCCESS] Scan completed successfully!');
+                
+                // CRITICAL: Set completion flag and stop polling immediately
+                scanCompleted = true;
+                if (pollInterval) {
+                    clearInterval(pollInterval);
+                    pollInterval = null;
+                }
+                
+                // IMMEDIATE REDIRECT - No complex DOM manipulation
+                addLogEntry('[REDIRECT] Redirecting to results...');
+                console.log('IMMEDIATE REDIRECT TO:', `/results/${scanId}`);
+                
+                try {
+                    // Direct redirect - no delays, no complex logic
+                    window.location.href = `/results/${scanId}`;
+                } catch (e) {
+                    console.error('Redirect error:', e);
+                    addLogEntry('[ERROR] Redirect failed, showing button...');
+                    
+                    // Fallback: Simple button
+                    setTimeout(() => {
+                        const btn = document.createElement('button');
+                        btn.innerHTML = 'VIEW RESULTS';
+                        btn.onclick = () => window.location.href = `/results/${scanId}`;
+                        btn.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9999;background:green;color:white;padding:20px;font-size:20px;border:none;cursor:pointer;';
+                        document.body.appendChild(btn);
+                    }, 500);
+                }
+                
+                return; // Stop execution here
+                
+            } else if (data.status === 'not_found') {
+                addLogEntry('[WARNING] Scan status not found - scan may have completed');
+                // Try direct redirect as scan might be completed
+                window.location.href = `/results/${scanId}`;
+                
+            } else if (data.status === 'error') {
+                progressBar.classList.remove('progress-bar-animated');
+                progressBar.classList.add('bg-danger');
+                statusText.innerHTML = `<i class="fas fa-exclamation-triangle text-danger me-2"></i>Error: ${data.error}`;
+                
+                clearInterval(pollInterval);
+                addLogEntry(`[ERROR] Scan failed: ${data.error}`);
+                
+                // Show retry option
+                document.getElementById('cancel-scan').innerHTML = 
+                    '<i class="fas fa-redo me-2"></i>Return to Home';
+                document.getElementById('cancel-scan').onclick = () => {
+                    window.location.href = '/';
+                };
+            } else {
+                // Handle any other unexpected status
+                console.log(`Unexpected status: ${data.status}`);
+                addLogEntry(`[WARNING] Unexpected status: ${data.status} - continuing to monitor...`);
+            }
+        })
+        .catch(error => {
+            // Don't log errors if scan is already completed
+            if (scanCompleted) {
+                console.log('Ignoring error after completion:', error);
+                return;
+            }
+            console.error('Error fetching scan status:', error);
+            addLogEntry('[ERROR] Connection error - retrying...');
+        });
+}
+
+function updatePhase(phase, completed = false) {
+    if (phase > currentPhase || completed) {
+        // Update previous phases to completed
+        for (let i = 1; i <= (completed ? phase : phase - 1); i++) {
+            const phaseElement = document.getElementById(`phase-${i}`);
+            const icon = phaseElement.querySelector('i');
+            const bg = phaseElement.querySelector('.bg-light');
+            
+            bg.classList.remove('bg-light');
+            bg.classList.add('bg-success');
+            icon.classList.remove('text-muted');
+            icon.classList.add('text-white');
+            
+            if (i === 1) icon.className = 'fas fa-check text-white fa-2x';
+            else if (i === 2) icon.className = 'fas fa-check text-white fa-2x';
+            else if (i === 3) icon.className = 'fas fa-check text-white fa-2x';
+        }
+        
+        // Update current phase to active
+        if (!completed && phase <= 3) {
+            const phaseElement = document.getElementById(`phase-${phase}`);
+            const icon = phaseElement.querySelector('i');
+            const bg = phaseElement.querySelector('div');
+            
+            bg.classList.remove('bg-light');
+            bg.classList.add('bg-primary');
+            icon.classList.remove('text-muted');
+            icon.classList.add('text-white');
+        }
+        
+        currentPhase = phase;
+    }
+}
+
+function addLogEntry(message) {
+    const logContent = document.getElementById('log-content');
+    const timestamp = new Date().toLocaleTimeString();
+    const logEntry = document.createElement('div');
+    logEntry.textContent = `[${timestamp}] ${message}`;
+    logContent.appendChild(logEntry);
+    logContent.scrollTop = logContent.scrollHeight;
+    
+    // Show log if there are entries
+    if (!document.getElementById('live-log').style.display || 
+        document.getElementById('live-log').style.display === 'none') {
+        document.getElementById('live-log').style.display = 'block';
+    }
+}
+
+function toggleLog() {
+    const logCard = document.getElementById('live-log');
+    const logBody = logCard.querySelector('.card-body');
+    
+    if (logBody.style.display === 'none') {
+        logBody.style.display = 'block';
+    } else {
+        logBody.style.display = 'none';
+    }
+}
+
+function cancelScan() {
+    if (confirm('Are you sure you want to cancel this scan?')) {
+        clearInterval(pollInterval);
+        window.location.href = '/';
+    }
+}
+
+// Start polling for updates
+document.addEventListener('DOMContentLoaded', function() {
+    updateProgress(); // Initial update
+    pollInterval = setInterval(updateProgress, 2000); // Poll every 2 seconds
+    
+    addLogEntry('Security scan initiated');
+    addLogEntry('Target URL validation successful');
+    addLogEntry('Starting comprehensive security assessment...');
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    if (pollInterval) {
+        clearInterval(pollInterval);
+    }
+});
+</script>
+
+<style>
+.scan-phase {
+    transition: all 0.3s ease;
+}
+
+.scan-phase .bg-success {
+    background: linear-gradient(135deg, var(--success-color), #047857) !important;
+}
+
+.scan-phase .bg-primary {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)) !important;
+}
+
+#log-content::-webkit-scrollbar {
+    width: 8px;
+}
+
+#log-content::-webkit-scrollbar-track {
+    background: #2d3748;
+}
+
+#log-content::-webkit-scrollbar-thumb {
+    background: #4a5568;
+    border-radius: 4px;
+}
+
+#log-content::-webkit-scrollbar-thumb:hover {
+    background: #718096;
+}
+</style>
+{% endblock %} 
