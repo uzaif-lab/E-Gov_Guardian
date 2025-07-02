@@ -36,8 +36,8 @@ def check_dependencies():
 
 def setup_environment():
     """Setup necessary directories and environment"""
-    # Create necessary directories
-    directories = ['temp_scans', 'templates', 'scanner']
+    # Check necessary directories exist
+    directories = ['templates', 'scanner']
     for directory in directories:
         os.makedirs(directory, exist_ok=True)
     

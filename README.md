@@ -119,7 +119,8 @@ The web interface runs on **http://localhost:5000** by default and provides:
 #### Security Considerations
 
 - **Local Access Only**: Interface runs locally for security
-- **Temporary Storage**: Scan results stored temporarily and auto-deleted
+- **In-Memory Processing**: Zero file storage - all data processed in memory only
+- **Privacy-First**: No persistent data storage, complete privacy protection
 - **Permission Validation**: Built-in disclaimers for ethical scanning
 
 ### 💻 Command Line Options

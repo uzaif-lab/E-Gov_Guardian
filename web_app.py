@@ -4,30 +4,22 @@ E-Gov Guardian Web Interface
 A web-based security scanner with PDF report generation
 """
 
-import os
-import json
-# tempfile not needed - using in-memory storage
 import threading
 import uuid
-from datetime import datetime, timedelta
-from flask import Flask, render_template, request, jsonify, send_file, flash, redirect, url_for, session
+import time
+from datetime import datetime
+from flask import Flask, render_template, request, jsonify, send_file, flash, redirect, url_for
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, BooleanField, SubmitField
 from wtforms.validators import DataRequired, URL
-from werkzeug.utils import secure_filename
-import subprocess
-import time
-from pathlib import Path
 
 # Import our scanner
 from scanner.main_scanner import SecurityScanner
-# ReportGenerator not needed - using in-memory PDF generation
 
 app = Flask(__name__)
 app.secret_key = 'egov-guardian-security-scanner-in-memory-2024'
-app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(hours=2)  # Sessions auto-expire
 
-# In-memory operation - no persistent file storage required
+# In-memory operation - no file storage
 
 def load_scan_status():
     """Load scan status from in-memory global storage"""
@@ -50,7 +42,6 @@ def save_scan_results(results_dict):
 
 def cleanup_old_scans():
     """Clean up scan data older than 2 hours to prevent memory buildup"""
-    import time
     current_time = time.time()
     cutoff_time = current_time - (2 * 60 * 60)  # 2 hours ago
     
@@ -149,7 +140,7 @@ def transform_scanner_results(scanner_output):
     
     return web_format
 
-# In-memory globals (session-based storage)
+# In-memory global storage
 scan_status = {}
 scan_results = {}
 
@@ -308,7 +299,6 @@ def run_scan_async(scan_id, target_url, deep_scan):
     logger = logging.getLogger(__name__)
     
     try:
-        import time
         current_timestamp = time.time()
         
         scan_status[scan_id] = {
