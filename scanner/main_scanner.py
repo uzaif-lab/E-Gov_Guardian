@@ -91,8 +91,7 @@ class SecurityScanner:
             level=log_level,
             format='%(asctime)s - %(levelname)s - %(message)s',
             handlers=[
-                logging.FileHandler('egov_security_scan.log'),
-                logging.StreamHandler()
+                logging.StreamHandler()  # Console-only logging for in-memory operation
             ]
         )
     

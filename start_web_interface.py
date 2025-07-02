@@ -35,13 +35,16 @@ def check_dependencies():
     return True
 
 def setup_environment():
-    """Setup necessary directories and environment"""
-    # Check necessary directories exist
-    directories = ['templates', 'scanner']
-    for directory in directories:
-        os.makedirs(directory, exist_ok=True)
+    """Setup necessary environment checks"""
+    # Verify required directories exist (but don't create them)
+    required_dirs = ['templates', 'scanner']
+    for directory in required_dirs:
+        if not os.path.exists(directory):
+            print(f"❌ Required directory missing: {directory}")
+            return False
     
-    print("✅ Environment setup complete")
+    print("✅ Environment verification complete")
+    return True
 
 def main():
     """Main launcher function"""
@@ -61,9 +64,10 @@ def main():
     
     print("✅ All dependencies found")
     
-    # Setup environment
-    print("⚙️  Setting up environment...")
-    setup_environment()
+    # Verify environment
+    print("⚙️  Verifying environment...")
+    if not setup_environment():
+        sys.exit(1)
     
     # Start the web application
     print("🌐 Starting web interface...")
