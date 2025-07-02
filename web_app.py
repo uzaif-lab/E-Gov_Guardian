@@ -316,19 +316,36 @@ def generate_pdf_report_in_memory(json_data):
             # Add AI recommendation if available
             if vuln.get('ai_powered') and vuln.get('remediation'):
                 ai_rec = vuln.get('remediation', '')
-                ai_label = "🧠 AI Fix Advisor"
-                vuln_details.append([ai_label, ai_rec[:300] + '...' if len(ai_rec) > 300 else ai_rec])
+                # Clean and wrap AI recommendation text for PDF
+                ai_label = "AI Fix Advisor"
+                # Limit AI recommendation to 250 chars for better PDF formatting
+                if len(ai_rec) > 250:
+                    ai_rec = ai_rec[:250] + '...'
+                # Create a Paragraph object for better text wrapping
+                ai_text = Paragraph(ai_rec, styles['Normal'])
+                vuln_details.append([ai_label, ai_text])
             elif vuln.get('remediation'):
-                vuln_details.append(['Remediation', vuln.get('remediation', 'N/A')[:200] + '...' if len(vuln.get('remediation', '')) > 200 else vuln.get('remediation', 'N/A')])
+                remediation_text = vuln.get('remediation', 'N/A')
+                if len(remediation_text) > 200:
+                    remediation_text = remediation_text[:200] + '...'
+                vuln_details.append(['Remediation', remediation_text])
             
-            vuln_table = Table(vuln_details, colWidths=[1.5*inch, 4*inch])
+            # Use wider columns when AI recommendations are present
+            has_ai_rec = vuln.get('ai_powered') and vuln.get('remediation')
+            col_widths = [1.2*inch, 4.3*inch] if has_ai_rec else [1.5*inch, 4*inch]
+            vuln_table = Table(vuln_details, colWidths=col_widths)
             vuln_table.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (0, -1), colors.lightblue),
                 ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
                 ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
                 ('FONTSIZE', (0, 0), (-1, -1), 10),
                 ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('VALIGN', (0, 0), (-1, -1), 'TOP')
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('ROWBACKGROUNDS', (0, 0), (-1, -1), [None, colors.lightgrey]),
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+                ('TOPPADDING', (0, 0), (-1, -1), 6),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 6)
             ]))
             
             story.append(vuln_table)
