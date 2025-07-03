@@ -141,6 +141,26 @@ def transform_scanner_results(scanner_output):
                     'remediation': remediation,
                     'ai_powered': bool(ai_recommendation)
                 })
+        
+        # From advanced security tests
+        if 'advanced_tests' in results and 'vulnerabilities' in results['advanced_tests']:
+            for vuln in results['advanced_tests']['vulnerabilities']:
+                # Check for AI recommendation (if AI analysis was performed on these)
+                ai_recommendation = vuln.get('ai_recommendation', '')
+                if ai_recommendation:
+                    ai_recommendations_found += 1
+                    
+                remediation = ai_recommendation if ai_recommendation else vuln.get('recommendation', 'Address the security issue')
+                
+                vulnerabilities.append({
+                    'type': vuln.get('type', 'Security Issue'),
+                    'severity': vuln.get('severity', 'MEDIUM').upper(),
+                    'description': vuln.get('description', 'Security vulnerability detected'),
+                    'location': vuln.get('location', scanner_output.get('target', '')),
+                    'details': vuln.get('evidence', 'See vulnerability details'),
+                    'remediation': remediation,
+                    'ai_powered': bool(ai_recommendation)
+                })
 
     # Get summary data
     summary = scanner_output.get('summary', {})
@@ -155,13 +175,23 @@ def transform_scanner_results(scanner_output):
     else:
         ai_status_message = "ℹ️ AI analysis not requested for this scan"
     
+    # Calculate severity counts
+    severity_counts = {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}
+    for vuln in vulnerabilities:
+        severity = vuln.get('severity', 'MEDIUM').upper()
+        if severity in severity_counts:
+            severity_counts[severity] += 1
+    
     # Transform to template format
     web_format = {
         'target': scanner_output.get('target', ''),
+        'risk_rating': scanner_output.get('risk_rating', 'Unknown').title(),
+        'compliance_score': scanner_output.get('compliance_score', 0),
         'executive_summary': {
-            'risk_rating': scanner_output.get('risk_rating', 'UNKNOWN'),
-            'compliance_score': summary.get('compliance_score', 0),
-            'total_vulnerabilities': summary.get('total_vulnerabilities', len(vulnerabilities)),
+            'total_vulnerabilities': len(vulnerabilities),
+            'high_risk_issues': severity_counts['HIGH'],
+            'medium_risk_issues': severity_counts['MEDIUM'],
+            'low_risk_issues': severity_counts['LOW'],
             'recommendations': scanner_output.get('recommendations', [])[:5]  # Limit to top 5
         },
         'vulnerabilities': vulnerabilities,
@@ -184,12 +214,27 @@ scan_status = {}
 scan_results = {}
 
 class ScanForm(FlaskForm):
-    """Form for URL scanning"""
+    """Form for URL scanning with test selection"""
     target_url = StringField('Target URL', validators=[DataRequired(), URL()], 
                             render_kw={"placeholder": "https://example.com"})
     deep_scan = BooleanField('Deep Scan (More thorough but slower)')
     ai_analysis = BooleanField('🧠 AI Fix Advisor (Get AI-powered fix recommendations)')
     scan_type = SelectField('Scan Type', choices=[('url', 'Web Application')])
+    
+    # Core Vulnerability Tests
+    test_sql_injection = BooleanField('SQL Injection Detection')
+    test_xss = BooleanField('Cross-Site Scripting (XSS)')
+    test_csrf = BooleanField('CSRF Detection')
+    test_headers = BooleanField('Missing Security Headers')
+    test_cors = BooleanField('CORS Policy Testing')
+    
+    # Advanced & API Tests
+    test_open_redirect = BooleanField('Open Redirects')
+    test_host_header = BooleanField('Host Header Injection')
+    test_api_fuzzing = BooleanField('API Endpoint Fuzzing')
+    test_subresource_integrity = BooleanField('Subresource Integrity')
+    test_graphql = BooleanField('GraphQL Security')
+    
     submit = SubmitField('Start Security Scan')
 
 def generate_pdf_report_in_memory(json_data):
@@ -224,54 +269,54 @@ def generate_pdf_report_in_memory(json_data):
         'CustomHeading',
         parent=styles['Heading2'],
         fontSize=16,
-        spaceAfter=12,
-        textColor=colors.darkred
+        spaceAfter=20
+    )
+    
+    subheading_style = ParagraphStyle(
+        'CustomSubHeading',
+        parent=styles['Heading2'],
+        fontSize=14,
+        spaceAfter=10
+    )
+    
+    normal_style = ParagraphStyle(
+        'CustomNormal',
+        parent=styles['Normal'],
+        fontSize=10,
+        leading=14,
+        spaceAfter=8
+    )
+    
+    cell_style = ParagraphStyle(
+        'CellStyle',
+        parent=styles['Normal'],
+        fontSize=9,
+        leading=12,
+        wordWrap='CJK',
+        alignment=0
     )
     
     # Title
-    story.append(Paragraph("E-Gov Guardian Security Assessment Report", title_style))
+    story.append(Paragraph("E-Gov Guardian Security Report", heading_style))
     story.append(Spacer(1, 20))
     
     # Executive Summary
     summary = json_data.get('executive_summary', {})
-    story.append(Paragraph("Executive Summary", heading_style))
+    story.append(Paragraph("Executive Summary", subheading_style))
     
-    summary_data = [
-        ['Target', json_data.get('target', 'N/A')],
-        ['Scan Date', json_data.get('scan_info', {}).get('timestamp', 'N/A')],
-        ['Risk Rating', summary.get('risk_rating', 'N/A')],
-        ['Compliance Score', f"{summary.get('compliance_score', 0)}/100"],
-        ['Total Vulnerabilities', str(summary.get('total_vulnerabilities', 0))],
-        ['Scan Duration', f"{json_data.get('scan_info', {}).get('duration', 'N/A')} seconds"]
-    ]
-    
-    # Add AI analysis status if applicable
-    scan_info = json_data.get('scan_info', {})
-    if scan_info.get('ai_analysis_attempted'):
-        ai_status = f"{scan_info.get('ai_recommendations_count', 0)} AI recommendations"
-        if scan_info.get('ai_recommendations_count', 0) == 0:
-            ai_status += " (Failed - API quota/connectivity issue)"
-        summary_data.append(['AI Analysis', ai_status])
-    
-    summary_table = Table(summary_data, colWidths=[2*inch, 3*inch])
-    summary_table.setStyle(TableStyle([
-        ('BACKGROUND', (0, 0), (-1, 0), colors.lightblue),
-        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-        ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-        ('FONTSIZE', (0, 0), (-1, 0), 14),
-        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-        ('GRID', (0, 0), (-1, -1), 1, colors.black)
-    ]))
-    
-    story.append(summary_table)
+    summary_text = f"""
+    Target URL: {json_data.get('target', 'N/A')}
+    Risk Rating: {json_data.get('risk_rating', 'N/A')}
+    Compliance Score: {json_data.get('compliance_score', 'N/A')}/100
+    Total Issues: {len(json_data.get('vulnerabilities', []))}
+    """
+    story.append(Paragraph(summary_text, normal_style))
     story.append(Spacer(1, 20))
     
     # Vulnerabilities by Severity
     vulnerabilities = json_data.get('vulnerabilities', [])
     if vulnerabilities:
-        story.append(Paragraph("Vulnerabilities Found", heading_style))
+        story.append(Paragraph("Detailed Vulnerability Analysis", heading_style))
         
         # Group by severity
         severity_counts = {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'INFO': 0}
@@ -303,14 +348,28 @@ def generate_pdf_report_in_memory(json_data):
         # Detailed Vulnerabilities
         story.append(Paragraph("Detailed Vulnerability Analysis", heading_style))
         
-        for i, vuln in enumerate(vulnerabilities[:10], 1):  # Limit to first 10 for PDF
+        for i, vuln in enumerate(vulnerabilities, 1):
             vuln_title = f"{i}. {vuln.get('type', 'Unknown Vulnerability')}"
-            story.append(Paragraph(vuln_title, styles['Heading3']))
+            story.append(Paragraph(vuln_title, subheading_style))
             
-            vuln_details = [
-                ['Severity', vuln.get('severity', 'N/A')],
-                ['Location', vuln.get('location', 'N/A')],
-                ['Description', vuln.get('description', 'N/A')[:200] + '...' if len(vuln.get('description', '')) > 200 else vuln.get('description', 'N/A')]
+            # Format each field with proper styling
+            vuln_details = []
+            
+            # Add severity with background color
+            severity = vuln.get('severity', 'N/A')
+            severity_color = {
+                'HIGH': colors.red,
+                'MEDIUM': colors.orange,
+                'LOW': colors.green
+            }.get(severity.upper(), colors.white)
+            
+            # Create table data with proper formatting
+            table_data = [
+                ['Severity', Paragraph(severity, cell_style)],
+                ['Location', Paragraph(vuln.get('location', 'N/A'), cell_style)],
+                ['Description', Paragraph(vuln.get('description', 'N/A'), cell_style)],
+                ['Technical Details', Paragraph(vuln.get('details', 'N/A'), cell_style)],
+                ['Remediation', Paragraph(vuln.get('remediation', 'N/A'), cell_style)]
             ]
             
             # Add AI recommendation if available
@@ -322,41 +381,33 @@ def generate_pdf_report_in_memory(json_data):
                 if len(ai_rec) > 250:
                     ai_rec = ai_rec[:250] + '...'
                 # Create a Paragraph object for better text wrapping
-                ai_text = Paragraph(ai_rec, styles['Normal'])
-                vuln_details.append([ai_label, ai_text])
-            elif vuln.get('remediation'):
-                remediation_text = vuln.get('remediation', 'N/A')
-                if len(remediation_text) > 200:
-                    remediation_text = remediation_text[:200] + '...'
-                vuln_details.append(['Remediation', remediation_text])
+                ai_text = Paragraph(ai_rec, normal_style)
+                table_data.append(['AI Recommendation', ai_text])
             
-            # Use wider columns when AI recommendations are present
-            has_ai_rec = vuln.get('ai_powered') and vuln.get('remediation')
-            col_widths = [1.2*inch, 4.3*inch] if has_ai_rec else [1.5*inch, 4*inch]
-            vuln_table = Table(vuln_details, colWidths=col_widths)
-            vuln_table.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (0, -1), colors.lightblue),
-                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
-                ('FONTNAME', (0, 0), (0, -1), 'Helvetica-Bold'),
-                ('FONTSIZE', (0, 0), (-1, -1), 10),
+            # Create and style the table
+            table = Table(table_data, colWidths=[120, 380])
+            table.setStyle(TableStyle([
                 ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-                ('ROWBACKGROUNDS', (0, 0), (-1, -1), [None, colors.lightgrey]),
+                ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+                ('TEXTCOLOR', (0, 0), (-1, -1), colors.black),
+                ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+                ('FONTNAME', (0, 0), (-1, -1), 'Helvetica'),
+                ('FONTSIZE', (0, 0), (-1, -1), 9),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+                ('TOPPADDING', (0, 0), (-1, -1), 6),
                 ('LEFTPADDING', (0, 0), (-1, -1), 6),
                 ('RIGHTPADDING', (0, 0), (-1, -1), 6),
-                ('TOPPADDING', (0, 0), (-1, -1), 6),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 6)
+                ('VALIGN', (0, 0), (-1, -1), 'TOP')
             ]))
-            
-            story.append(vuln_table)
-            story.append(Spacer(1, 12))
+            story.append(table)
+            story.append(Spacer(1, 12))  # Add space between vulnerabilities
     
     # Recommendations
     recommendations = summary.get('recommendations', [])
     if recommendations:
         story.append(Paragraph("Security Recommendations", heading_style))
         for i, rec in enumerate(recommendations, 1):
-            story.append(Paragraph(f"{i}. {rec}", styles['Normal']))
+            story.append(Paragraph(f"{i}. {rec}", normal_style))
             story.append(Spacer(1, 6))
     
     # Build PDF in memory
@@ -366,8 +417,8 @@ def generate_pdf_report_in_memory(json_data):
     buffer.seek(0)
     return buffer
 
-def run_scan_async(scan_id, target_url, deep_scan, ai_analysis=False):
-    """Run security scan asynchronously"""
+def run_scan_async(scan_id, target_url, deep_scan, ai_analysis=False, selected_tests=None):
+    """Run security scan asynchronously with selective test execution"""
     import logging
     logger = logging.getLogger(__name__)
     
@@ -381,6 +432,7 @@ def run_scan_async(scan_id, target_url, deep_scan, ai_analysis=False):
         }
         save_scan_status(scan_status)
         logger.info(f"Starting scan for {target_url} (AI Analysis: {ai_analysis})")
+        logger.info(f"Selected tests: {selected_tests}")
         
         # Initialize scanner with AI analysis setting
         scanner = SecurityScanner()
@@ -412,7 +464,7 @@ def run_scan_async(scan_id, target_url, deep_scan, ai_analysis=False):
         
         def run_scan():
             try:
-                result = scanner.scan_url(target_url, deep_scan=deep_scan)
+                result = scanner.scan_url(target_url, deep_scan=deep_scan, selected_tests=selected_tests)
                 result_queue.put(result)
             except Exception as e:
                 error_queue.put(e)
@@ -481,27 +533,57 @@ def index():
 def start_scan():
     """Start a new security scan"""
     form = ScanForm()
-    
     if form.validate_on_submit():
-        # Generate unique scan ID
-        scan_id = str(uuid.uuid4())
-        
-        # Get form data
         target_url = form.target_url.data
         deep_scan = form.deep_scan.data
         ai_analysis = form.ai_analysis.data
         
-        # Start scan in background thread
-        thread = threading.Thread(
-            target=run_scan_async,
-            args=(scan_id, target_url, deep_scan, ai_analysis)
-        )
-        thread.daemon = True
-        thread.start()
+        # Get selected tests
+        selected_tests = {
+            'sql_injection': form.test_sql_injection.data,
+            'xss': form.test_xss.data,
+            'csrf': form.test_csrf.data,
+            'headers': form.test_headers.data,
+            'cors': form.test_cors.data,
+            'open_redirect': form.test_open_redirect.data,
+            'host_header': form.test_host_header.data,
+            'api_fuzzing': form.test_api_fuzzing.data,
+            'subresource_integrity': form.test_subresource_integrity.data,
+            'graphql': form.test_graphql.data
+        }
         
+        # If no tests selected, enable all tests
+        if not any(selected_tests.values()):
+            selected_tests = {key: True for key in selected_tests}
+        
+        # Generate unique scan ID
+        scan_id = str(uuid.uuid4())
+        
+        # Initialize scan status
+        save_scan_status({
+            scan_id: {
+                'status': 'starting',
+                'progress': 0,
+                'timestamp': time.time()
+            }
+        })
+        
+        # Start scan in background thread
+        scan_thread = threading.Thread(
+            target=run_scan_async,
+            args=(scan_id, target_url, deep_scan, ai_analysis, selected_tests)
+        )
+        scan_thread.daemon = True
+        scan_thread.start()
+        
+        # Redirect to scan progress page
         return redirect(url_for('scan_progress', scan_id=scan_id))
     
-    return render_template('index.html', form=form)
+    # If form validation failed
+    for field, errors in form.errors.items():
+        for error in errors:
+            flash(f'Error in {field}: {error}', 'error')
+    return redirect(url_for('index'))
 
 @app.route('/scan/<scan_id>')
 def scan_progress(scan_id):
@@ -521,21 +603,24 @@ def get_scan_status(scan_id):
 
 @app.route('/results/<scan_id>')
 def scan_results_page(scan_id):
-    """Show scan results page"""
-    import logging
-    logger = logging.getLogger(__name__)
-    logger.info(f"Results page requested for scan_id: {scan_id}")
-    
-    scan_results = load_scan_results()
-    logger.info(f"Available scan results: {list(scan_results.keys())}")
-    
-    if scan_id not in scan_results:
-        logger.error(f"Scan results not found for {scan_id}")
-        flash('Scan results not found or scan still in progress.', 'error')
+    """Display scan results"""
+    # Get scan results from storage
+    results = load_scan_results().get(scan_id)
+    if not results:
+        flash('Scan results not found', 'error')
         return redirect(url_for('index'))
     
-    results = scan_results[scan_id]
-    logger.info(f"Returning results page for scan_id: {scan_id}")
+    # Log for debugging
+    app.logger.info(f"Results page requested for scan_id: {scan_id}")
+    app.logger.info(f"Available scan results: {list(load_scan_results().keys())}")
+    app.logger.info(f"Returning results page for scan_id: {scan_id}")
+    
+    # Transform results for template if needed
+    if not isinstance(results, dict) or 'risk_rating' not in results:
+        results = transform_scanner_results(results)
+        # Update stored results with transformed version
+        save_scan_results({scan_id: results})
+    
     return render_template('results.html', results=results, scan_id=scan_id)
 
 @app.route('/download/<scan_id>')

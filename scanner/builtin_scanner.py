@@ -22,8 +22,8 @@ class BuiltinAPIScanner:
             'User-Agent': 'E-Gov-Guardian-Scanner/1.0'
         })
         
-    def scan_url(self, target_url: str, scan_config: Dict[str, Any]) -> Dict[str, Any]:
-        """Perform comprehensive API-based security scan"""
+    def scan_url(self, target_url: str, scan_config: Dict[str, Any], selected_tests: Dict[str, bool] = None) -> Dict[str, Any]:
+        """Perform comprehensive API-based security scan with selective test execution"""
         results = {
             'target_url': target_url,
             'scan_start_time': time.time(),
@@ -31,33 +31,48 @@ class BuiltinAPIScanner:
             'scan_status': 'started'
         }
         
+        # If no tests selected, enable all core tests
+        if selected_tests is None:
+            selected_tests = {
+                'sql_injection': True,
+                'xss': True,
+                'headers': True
+            }
+        
         try:
             self.logger.info(f"Starting built-in API scan for: {target_url}")
             
-            # 1. Basic URL crawling and discovery
-            discovered_urls = self._crawl_website(target_url, scan_config.get('max_depth', 3))
+            # 1. Basic URL crawling and discovery (always needed for active tests)
+            if selected_tests.get('sql_injection', False) or selected_tests.get('xss', False):
+                discovered_urls = self._crawl_website(target_url, scan_config.get('max_depth', 3))
+            else:
+                discovered_urls = [target_url]  # Just the main URL for other tests
             
-            # 2. SQL Injection testing
-            sql_vulns = self._test_sql_injection(discovered_urls)
-            results['vulnerabilities']['sql_injection'] = sql_vulns
+            # 2. SQL Injection testing (if selected)
+            if selected_tests.get('sql_injection', False):
+                self.logger.info("Running SQL injection tests...")
+                sql_vulns = self._test_sql_injection(discovered_urls)
+                results['vulnerabilities']['sql_injection'] = sql_vulns
             
-            # 3. XSS testing
-            xss_vulns = self._test_xss(discovered_urls)
-            results['vulnerabilities']['xss'] = xss_vulns
+            # 3. XSS testing (if selected)
+            if selected_tests.get('xss', False):
+                self.logger.info("Running XSS tests...")
+                xss_vulns = self._test_xss(discovered_urls)
+                results['vulnerabilities']['xss'] = xss_vulns
             
-            # 4. Directory traversal testing
+            # 4. Directory traversal testing (always run as core security test)
             traversal_vulns = self._test_directory_traversal(discovered_urls)
             results['vulnerabilities']['directory_traversal'] = traversal_vulns
             
-            # 5. Command injection testing
+            # 5. Command injection testing (always run as core security test)
             cmd_vulns = self._test_command_injection(discovered_urls)
             results['vulnerabilities']['command_injection'] = cmd_vulns
             
-            # 6. HTTP method testing
+            # 6. HTTP method testing (always run as core security test)
             method_vulns = self._test_http_methods(target_url)
             results['vulnerabilities']['http_methods'] = method_vulns
             
-            # 7. Information disclosure
+            # 7. Information disclosure (always run as core security test)
             info_disclosure = self._test_information_disclosure(target_url)
             results['vulnerabilities']['information_disclosure'] = info_disclosure
             

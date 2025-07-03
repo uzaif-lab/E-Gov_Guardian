@@ -73,6 +73,42 @@ class ReportGenerator:
                         'URL': results.get('target', ''),
                         'Description': header['description']
                     })
+            
+            # Cookie security issues
+            if 'cookie_security' in scan_results:
+                for issue in scan_results['cookie_security'].get('issues', []):
+                    vulnerabilities.append({
+                        'Type': 'Cookie Security',
+                        'Name': issue.get('name', 'Unknown Cookie Issue'),
+                        'Risk': issue.get('severity', 'Medium'),
+                        'Confidence': 'High',
+                        'URL': results.get('target', ''),
+                        'Description': issue.get('description', '')
+                    })
+            
+            # Advanced security test results
+            if 'vulnerability_scan' in scan_results:
+                for vuln in scan_results['vulnerability_scan'].get('vulnerabilities', []):
+                    vulnerabilities.append({
+                        'Type': vuln.get('type', 'Advanced Security Test'),
+                        'Name': vuln.get('name', vuln.get('type', 'Unknown')),
+                        'Risk': vuln.get('severity', 'Medium'),
+                        'Confidence': vuln.get('confidence', 'High'),
+                        'URL': vuln.get('location', results.get('target', '')),
+                        'Description': vuln.get('description', '')
+                    })
+            
+            # SSL configuration issues
+            if 'ssl_configuration' in scan_results:
+                for issue in scan_results['ssl_configuration'].get('issues', []):
+                    vulnerabilities.append({
+                        'Type': 'SSL Configuration',
+                        'Name': issue.get('name', 'SSL Issue'),
+                        'Risk': issue.get('severity', 'Medium'),
+                        'Confidence': 'High',
+                        'URL': results.get('target', ''),
+                        'Description': issue.get('description', '')
+                    })
         
         # Write CSV
         with open(output_path, 'w', newline='', encoding='utf-8') as f:
@@ -191,6 +227,10 @@ class ReportGenerator:
             # Code Patterns
             if 'code_patterns' in scan_results:
                 html += self._generate_code_section(scan_results['code_patterns'])
+                
+            # Advanced Security Tests
+            if 'vulnerability_scan' in scan_results:
+                html += self._generate_advanced_tests_section(scan_results['vulnerability_scan'])
         
         html += """
         </div>
@@ -382,6 +422,43 @@ class ReportGenerator:
                     html += f'<p>📄 <strong>{html.escape(issue["file"])}:{issue["line"]}</strong> - Potential hardcoded secret detected</p>'
         else:
             html += '<p>✅ No obvious code security issues detected.</p>'
+        
+        html += '</div>'
+        return html
+    
+    def _generate_advanced_tests_section(self, vuln_results: Dict[str, Any]) -> str:
+        """Generate advanced security tests section"""
+        html = '<div class="vulnerability-section"><h2>🔍 Advanced Security Tests</h2>'
+        
+        vulnerabilities = vuln_results.get('vulnerabilities', [])
+        
+        if vulnerabilities:
+            for i, vuln in enumerate(vulnerabilities):
+                risk_level = vuln.get('severity', 'MEDIUM').lower()
+                risk_class = f"risk-{risk_level}"
+                
+                html += f'''
+                <div class="vulnerability-item">
+                    <div class="vulnerability-header {risk_class}" onclick="toggleVulnerability('adv_{i}')">
+                        <div>
+                            <strong>{html.escape(vuln.get('type', 'Unknown'))}</strong>
+                            <span style="margin-left: 10px; padding: 4px 8px; background: white; border-radius: 4px; font-size: 12px;">
+                                {vuln.get('severity', 'Unknown')} Risk
+                            </span>
+                        </div>
+                        <span class="toggle" id="adv_{i}_toggle">+</span>
+                    </div>
+                    <div class="vulnerability-content" id="adv_{i}">
+                        <p><strong>Location:</strong> {html.escape(vuln.get('location', 'N/A'))}</p>
+                        <p><strong>Description:</strong> {html.escape(vuln.get('description', 'No description available'))}</p>
+                        {f"<p><strong>Technical Details:</strong> {html.escape(vuln.get('technical_details', ''))}</p>" if vuln.get('technical_details') else ''}
+                        {f"<p><strong>Remediation:</strong> {html.escape(vuln.get('remediation', ''))}</p>" if vuln.get('remediation') else ''}
+                        {f"<p><strong>AI Recommendation:</strong> {html.escape(vuln.get('ai_recommendation', ''))}</p>" if vuln.get('ai_recommendation') else ''}
+                    </div>
+                </div>
+                '''
+        else:
+            html += '<p>No advanced security vulnerabilities found.</p>'
         
         html += '</div>'
         return html 

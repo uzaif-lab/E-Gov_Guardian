@@ -16,12 +16,15 @@ import urllib3
 from datetime import datetime
 from typing import Dict, Any, List
 from pathlib import Path
+from uuid import uuid4
+import time
 
 from .zap_client import ZAPClient
 from .vulnerability_detector import VulnerabilityDetector
 from .report_generator import ReportGenerator
 from .builtin_scanner import BuiltinAPIScanner
 from .ai_advisor import AIFixAdvisor
+from .advanced_tests import AdvancedSecurityTests
 
 # Disable SSL warnings for testing
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -50,6 +53,7 @@ class SecurityScanner:
         self.builtin_scanner = BuiltinAPIScanner()
         self.vuln_detector = VulnerabilityDetector()
         self.report_generator = ReportGenerator()
+        self.advanced_tests = AdvancedSecurityTests()
         
         # Initialize AI advisor if API key is available (always try to initialize)
         self.ai_enabled = self.config.get('ai_analysis', {}).get('enabled', False)
@@ -123,9 +127,28 @@ class SecurityScanner:
             ]
         )
     
-    def scan_url(self, target_url: str, deep_scan: bool = False) -> Dict[str, Any]:
-        """Perform comprehensive security scan on a URL"""
+    def scan_url(self, target_url: str, deep_scan: bool = False, selected_tests: Dict[str, bool] = None) -> Dict[str, Any]:
+        """Perform comprehensive security scan on a URL with selective test execution"""
         self.logger.info(f"Starting security assessment for: {target_url}")
+        
+        # Generate a scan ID
+        scan_id = str(uuid4())
+        self._update_scan_progress(scan_id, 0)
+        
+        # If no tests selected, enable all tests
+        if selected_tests is None or not any(selected_tests.values()):
+            selected_tests = {
+                'sql_injection': True,
+                'xss': True,
+                'csrf': True,
+                'headers': True,
+                'cors': True,
+                'open_redirect': True,
+                'host_header': True,
+                'api_fuzzing': True,
+                'subresource_integrity': True,
+                'graphql': True
+            }
         
         scan_results = {
             'target': target_url,
@@ -135,9 +158,11 @@ class SecurityScanner:
             'scan_config': {
                 'zap_enabled': self.zap_enabled,
                 'deep_scan': deep_scan,
-                'max_depth': self.config['scanner']['max_depth']
+                'max_depth': self.config['scanner']['max_depth'],
+                'selected_tests': selected_tests
             },
-            'results': {}
+            'results': {},
+            'scan_id': scan_id
         }
         
         try:
@@ -145,9 +170,11 @@ class SecurityScanner:
             if not self._validate_url(target_url):
                 raise ValueError(f"Invalid URL format: {target_url}")
             
+            # Phase 1: Initial Setup and Configuration (0-10%)
             self.logger.info("Phase 1: Reconnaissance and Discovery")
+            self._update_scan_progress(scan_id, 10)
             
-            # 1. ZAP comprehensive scan (if enabled and available)
+            # Phase 2: ZAP Scan if enabled (10-30%)
             if self.zap_enabled and self.zap_client:
                 if self.zap_client.is_zap_running():
                     self.logger.info("Running OWASP ZAP professional scan...")
@@ -158,24 +185,27 @@ class SecurityScanner:
                     
                     zap_results = self.zap_client.scan_url(target_url, scan_config)
                     scan_results['results']['zap_scan'] = zap_results
+                    self._update_scan_progress(scan_id, 30)
                 else:
                     self.logger.warning("ZAP enabled but not accessible. Continuing with built-in scanner.")
             
-            # 2. Built-in comprehensive vulnerability scan
+            # Phase 3: Built-in Vulnerability Scan (30-50%)
             self.logger.info("Phase 2: Active Vulnerability Assessment")
             if self.config.get('alternative_scanners', {}).get('enabled', True):
                 scan_config = self.config['scanner'].copy()
                 if deep_scan:
                     scan_config['max_depth'] = 8
                     
-                builtin_results = self.builtin_scanner.scan_url(target_url, scan_config)
+                builtin_results = self.builtin_scanner.scan_url(target_url, scan_config, selected_tests)
                 scan_results['results']['vulnerability_scan'] = builtin_results
+                self._update_scan_progress(scan_id, 50)
             
-            # 3. Security configuration analysis
+            # Phase 4: Security Headers and Cookie Analysis (50-70%)
             self.logger.info("Phase 3: Security Configuration Analysis")
             
-            # Security headers assessment
-            if self.config['vulnerabilities']['insecure_headers']['enabled']:
+            # Security headers assessment (if selected)
+            if selected_tests.get('headers', False) and self.config['vulnerabilities']['insecure_headers']['enabled']:
+                self.logger.info("Running security headers tests...")
                 headers_result = self.vuln_detector.check_insecure_headers(target_url)
                 scan_results['results']['security_headers'] = headers_result
             
@@ -184,51 +214,131 @@ class SecurityScanner:
                 cookies_result = self.vuln_detector.check_insecure_cookies(target_url)
                 scan_results['results']['cookie_security'] = cookies_result
             
-            # SSL/TLS security assessment
-            from urllib.parse import urlparse
-            parsed_url = urlparse(target_url)
-            if parsed_url.scheme == 'https':
-                self.logger.info("Analyzing SSL/TLS configuration...")
-                ssl_result = self.vuln_detector.check_ssl_configuration(parsed_url.hostname)
-                scan_results['results']['ssl_configuration'] = ssl_result
+            self._update_scan_progress(scan_id, 70)
             
-            # 4. Infrastructure assessment
-            if self.config['vulnerabilities']['port_scan']['enabled']:
-                self.logger.info("Phase 4: Infrastructure Assessment")
-                try:
-                    port_result = self.vuln_detector.scan_open_ports(
-                        parsed_url.hostname, 
-                        self.config['vulnerabilities']['port_scan']['common_ports']
-                    )
-                    scan_results['results']['infrastructure'] = port_result
-                except Exception as e:
-                    self.logger.warning(f"Port scan failed: {str(e)}")
-                    scan_results['results']['infrastructure'] = {'error': 'Port scan requires elevated privileges'}
+            # Phase 5: Advanced Security Tests (70-90%)
+            self.logger.info("Phase 3.5: Advanced Security Tests")
+            advanced_results = {'vulnerabilities': []}
             
-            # 5. AI-powered vulnerability analysis (if enabled)
+            total_tests = sum(1 for test in selected_tests.values() if test)
+            completed_tests = 0
+            
+            # CORS Policy Testing
+            if selected_tests.get('cors', False):
+                self.logger.info("Running CORS policy tests...")
+                cors_vulns = self.advanced_tests.test_cors_policy(target_url)
+                advanced_results['vulnerabilities'].extend(cors_vulns)
+                completed_tests += 1
+                self._update_scan_progress(scan_id, 70 + int((completed_tests / total_tests) * 20))
+            
+            # CSRF Protection Testing
+            if selected_tests.get('csrf', False):
+                self.logger.info("Running CSRF protection tests...")
+                csrf_vulns = self.advanced_tests.test_csrf_protection(target_url)
+                advanced_results['vulnerabilities'].extend(csrf_vulns)
+                completed_tests += 1
+                self._update_scan_progress(scan_id, 70 + int((completed_tests / total_tests) * 20))
+            
+            # Open Redirect Testing
+            if selected_tests.get('open_redirect', False):
+                self.logger.info("Running open redirect tests...")
+                redirect_vulns = self.advanced_tests.test_open_redirects(target_url)
+                advanced_results['vulnerabilities'].extend(redirect_vulns)
+                completed_tests += 1
+                self._update_scan_progress(scan_id, 70 + int((completed_tests / total_tests) * 20))
+            
+            # Host Header Injection Testing
+            if selected_tests.get('host_header', False):
+                self.logger.info("Running host header injection tests...")
+                host_header_vulns = self.advanced_tests.test_host_header_injection(target_url)
+                advanced_results['vulnerabilities'].extend(host_header_vulns)
+                completed_tests += 1
+                self._update_scan_progress(scan_id, 70 + int((completed_tests / total_tests) * 20))
+            
+            # API Endpoint Fuzzing
+            if selected_tests.get('api_fuzzing', False):
+                self.logger.info("Running API endpoint fuzzing...")
+                api_vulns = self.advanced_tests.test_api_endpoint_fuzzing(target_url)
+                advanced_results['vulnerabilities'].extend(api_vulns)
+                completed_tests += 1
+                self._update_scan_progress(scan_id, 70 + int((completed_tests / total_tests) * 20))
+            
+            # Subresource Integrity Testing
+            if selected_tests.get('subresource_integrity', False):
+                self.logger.info("Running subresource integrity tests...")
+                sri_vulns = self.advanced_tests.test_subresource_integrity(target_url)
+                advanced_results['vulnerabilities'].extend(sri_vulns)
+                completed_tests += 1
+                self._update_scan_progress(scan_id, 70 + int((completed_tests / total_tests) * 20))
+            
+            # GraphQL Security Testing
+            if selected_tests.get('graphql', False):
+                self.logger.info("Running GraphQL security tests...")
+                graphql_vulns = self.advanced_tests.test_graphql_security(target_url)
+                advanced_results['vulnerabilities'].extend(graphql_vulns)
+                completed_tests += 1
+                self._update_scan_progress(scan_id, 70 + int((completed_tests / total_tests) * 20))
+            
+            scan_results['results']['advanced_tests'] = advanced_results
+            
+            # Phase 6: Final Analysis and Report Generation (90-100%)
+            # Calculate risk rating
+            risk_rating = self._calculate_risk_rating(scan_results)
+            scan_results['risk_rating'] = risk_rating
+            
+            # Calculate compliance score
+            compliance_score = self._calculate_compliance_score(scan_results)
+            scan_results['compliance_score'] = compliance_score
+            
+            # Generate recommendations
+            recommendations = self._generate_recommendations(scan_results)
+            scan_results['recommendations'] = recommendations
+            
+            # Add AI analysis if enabled
             if self.ai_enabled and self.ai_advisor:
-                self.logger.info("Phase 5: AI-Powered Vulnerability Analysis")
-                scan_results = self.ai_advisor.analyze_vulnerabilities(scan_results)
-                scan_results['ai_analysis_enabled'] = True
+                self.logger.info("🧠 AI analysis enabled for this scan")
+                try:
+                    # Get AI recommendations for each vulnerability
+                    for vuln in advanced_results['vulnerabilities']:
+                        try:
+                            ai_rec = self.ai_advisor._get_vulnerability_recommendation(
+                                vuln_type=vuln['type'],
+                                vulnerability=vuln
+                            )
+                            if ai_rec:
+                                vuln['ai_recommendation'] = ai_rec
+                        except Exception as e:
+                            self.logger.warning(f"Failed to get AI recommendation for vulnerability: {str(e)}")
+                    
+                    # Get overall AI analysis
+                    ai_analysis = self.ai_advisor.analyze_vulnerabilities(scan_results)
+                    scan_results['ai_recommendations'] = ai_analysis.get('recommendations', [])
+                    scan_results['ai_summary'] = ai_analysis.get('summary', '')
+                    scan_results['ai_analysis_enabled'] = True
+                    scan_results['ai_analysis_status'] = ai_analysis.get('ai_analysis_status', {})
+                    
+                    self.logger.info("✅ AI analysis completed successfully")
+                except Exception as e:
+                    self.logger.error(f"AI analysis failed: {str(e)}")
+                    scan_results['ai_analysis_enabled'] = False
+                    scan_results['ai_error'] = str(e)
             else:
                 scan_results['ai_analysis_enabled'] = False
+                if not self.ai_enabled:
+                    self.logger.info("AI analysis not enabled in configuration")
+                elif not self.ai_advisor:
+                    self.logger.info("AI advisor not initialized (missing API key or initialization failed)")
             
-            # 6. Generate comprehensive analysis
-            self.logger.info("Phase 6: Final Analysis and Risk Assessment")
-            scan_results['summary'] = self._generate_comprehensive_summary(scan_results['results'])
-            scan_results['risk_rating'] = self._calculate_risk_rating(scan_results['summary'])
-            scan_results['recommendations'] = self._generate_recommendations(scan_results['results'])
+            self._update_scan_progress(scan_id, 100)
+            self.logger.info(f"Scanner.scan_url() completed for {target_url}")
             
-            scan_results['status'] = 'completed'
-            scan_results['scan_duration'] = self._calculate_duration(scan_results['timestamp'])
+            return scan_results
             
         except Exception as e:
-            self.logger.error(f"Security scan failed: {str(e)}")
-            scan_results['status'] = 'failed'
+            self.logger.error(f"Error during scan: {str(e)}")
             scan_results['error'] = str(e)
-            scan_results['scan_duration'] = self._calculate_duration(scan_results['timestamp'])
-        
-        return scan_results
+            scan_results['status'] = 'failed'
+            return scan_results
     
     def scan_source_code(self, source_path: str) -> Dict[str, Any]:
         """Perform comprehensive security scan on source code"""
@@ -268,7 +378,7 @@ class SecurityScanner:
             scan_results['results']['configuration_analysis'] = config_results
             
             scan_results['summary'] = self._generate_comprehensive_summary(scan_results['results'])
-            scan_results['risk_rating'] = self._calculate_risk_rating(scan_results['summary'])
+            scan_results['risk_rating'] = self._calculate_risk_rating(scan_results['results'])
             scan_results['recommendations'] = self._generate_recommendations(scan_results['results'])
             scan_results['status'] = 'completed'
             
@@ -589,6 +699,22 @@ class SecurityScanner:
                 summary['medium_risk_issues'] += data.get('total_medium', 0)
                 summary['total_vulnerabilities'] += data.get('total_issues', 0)
         
+        # Add advanced security test results
+        if 'advanced_tests' in results:
+            advanced_vulns = results['advanced_tests'].get('vulnerabilities', [])
+            for vuln in advanced_vulns:
+                severity = vuln.get('severity', '').lower()
+                summary['total_vulnerabilities'] += 1
+                
+                if severity == 'critical':
+                    summary['critical_issues'] += 1
+                elif severity == 'high':
+                    summary['high_risk_issues'] += 1
+                elif severity == 'medium':
+                    summary['medium_risk_issues'] += 1
+                else:
+                    summary['low_risk_issues'] += 1
+        
         # Add infrastructure and configuration issues
         for category in ['security_headers', 'cookie_security', 'ssl_configuration', 'infrastructure']:
             if category in results:
@@ -614,18 +740,133 @@ class SecurityScanner:
         
         return summary
     
-    def _calculate_risk_rating(self, summary: Dict[str, Any]) -> str:
-        """Calculate overall risk rating"""
-        if summary['critical_issues'] > 0:
-            return 'CRITICAL'
-        elif summary['high_risk_issues'] > 5:
-            return 'HIGH'
-        elif summary['high_risk_issues'] > 0 or summary['medium_risk_issues'] > 10:
-            return 'MEDIUM'
-        elif summary['medium_risk_issues'] > 0:
-            return 'LOW'
+    def _calculate_risk_rating(self, results: Dict[str, Any]) -> str:
+        """Calculate overall risk rating based on vulnerability findings"""
+        severity_counts = {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}
+        
+        # Get all vulnerabilities
+        all_vulnerabilities = []
+        
+        # From ZAP scan
+        if 'zap_scan' in results.get('results', {}):
+            zap_vulns = results['results']['zap_scan'].get('vulnerabilities', {})
+            if 'all_alerts' in zap_vulns:
+                all_vulnerabilities.extend(zap_vulns['all_alerts'])
+        
+        # From built-in vulnerability scan
+        if 'vulnerability_scan' in results.get('results', {}):
+            vuln_scan = results['results']['vulnerability_scan']
+            if 'vulnerabilities' in vuln_scan:
+                for vuln_list in vuln_scan['vulnerabilities'].values():
+                    if isinstance(vuln_list, list):
+                        all_vulnerabilities.extend(vuln_list)
+        
+        # From security headers
+        if 'security_headers' in results.get('results', {}):
+            headers = results['results']['security_headers']
+            if 'missing_headers' in headers:
+                all_vulnerabilities.extend(headers['missing_headers'])
+        
+        # From advanced security tests
+        if 'advanced_tests' in results.get('results', {}):
+            advanced = results['results']['advanced_tests']
+            if 'vulnerabilities' in advanced:
+                all_vulnerabilities.extend(advanced['vulnerabilities'])
+        
+        # Count vulnerabilities by severity
+        for vuln in all_vulnerabilities:
+            severity = vuln.get('severity', vuln.get('risk', 'MEDIUM')).upper()
+            if severity in severity_counts:
+                severity_counts[severity] += 1
+        
+        # Calculate weighted score
+        weighted_score = (
+            severity_counts['HIGH'] * 10 +    # High severity issues count 10x
+            severity_counts['MEDIUM'] * 5 +   # Medium severity issues count 5x
+            severity_counts['LOW'] * 1        # Low severity issues count 1x
+        )
+        
+        # Log the calculation
+        self.logger.info(f"Risk calculation: {severity_counts['HIGH']} High, {severity_counts['MEDIUM']} Medium, {severity_counts['LOW']} Low")
+        self.logger.info(f"Weighted score: {weighted_score}")
+        
+        # Determine risk rating based on weighted score
+        if weighted_score == 0:
+            return "Low"
+        elif weighted_score <= 10:
+            return "Medium"
+        elif weighted_score <= 30:
+            return "High"
         else:
-            return 'MINIMAL'
+            return "Critical"
+    
+    def _calculate_compliance_score(self, results: Dict[str, Any]) -> int:
+        """Calculate compliance score based on security findings"""
+        base_score = 100
+        deductions = 0
+        
+        # Get all vulnerabilities
+        all_vulnerabilities = []
+        
+        # From ZAP scan
+        if 'zap_scan' in results.get('results', {}):
+            zap_vulns = results['results']['zap_scan'].get('vulnerabilities', {})
+            if 'all_alerts' in zap_vulns:
+                all_vulnerabilities.extend(zap_vulns['all_alerts'])
+        
+        # From built-in vulnerability scan
+        if 'vulnerability_scan' in results.get('results', {}):
+            vuln_scan = results['results']['vulnerability_scan']
+            if 'vulnerabilities' in vuln_scan:
+                for vuln_list in vuln_scan['vulnerabilities'].values():
+                    if isinstance(vuln_list, list):
+                        all_vulnerabilities.extend(vuln_list)
+        
+        # From security headers
+        if 'security_headers' in results.get('results', {}):
+            headers = results['results']['security_headers']
+            if 'missing_headers' in headers:
+                all_vulnerabilities.extend(headers['missing_headers'])
+        
+        # From advanced security tests
+        if 'advanced_tests' in results.get('results', {}):
+            advanced = results['results']['advanced_tests']
+            if 'vulnerabilities' in advanced:
+                all_vulnerabilities.extend(advanced['vulnerabilities'])
+        
+        # Calculate deductions based on severity
+        for vuln in all_vulnerabilities:
+            severity = vuln.get('severity', vuln.get('risk', 'MEDIUM')).upper()
+            if severity == 'HIGH' or severity == 'CRITICAL':
+                deductions += 15  # -15 points for each high/critical vulnerability
+            elif severity == 'MEDIUM':
+                deductions += 10  # -10 points for each medium vulnerability
+            elif severity == 'LOW':
+                deductions += 5   # -5 points for each low vulnerability
+        
+        # Ensure score doesn't go below 0
+        final_score = max(0, base_score - deductions)
+        
+        # Log the calculation
+        self.logger.info(f"Compliance score calculation: Base {base_score} - Deductions {deductions} = Final {final_score}")
+        
+        return final_score
+    
+    def _update_scan_progress(self, scan_id: str, progress: int):
+        """Update scan progress in global storage"""
+        from web_app import save_scan_status
+        save_scan_status({
+            scan_id: {
+                'status': 'completed' if progress >= 100 else 'scanning',
+                'progress': progress,
+                'timestamp': time.time()
+            }
+        })
+        self.logger.info(f"Updated scan progress: {progress}%")
+    
+    def get_scan_progress(self, scan_id: str) -> int:
+        """Get current scan progress percentage"""
+        return getattr(self, '_scan_progress', {}).get(scan_id, 0)
     
     def _generate_recommendations(self, results: Dict[str, Any]) -> List[str]:
         """Generate security recommendations based on findings"""
@@ -654,6 +895,26 @@ class SecurityScanner:
         
         if 'infrastructure' in results and len(results['infrastructure'].get('high_risk_ports', [])) > 0:
             recommendations.append("Close unnecessary open ports and secure exposed services")
+        
+        # Add advanced security test recommendations
+        if 'advanced_tests' in results:
+            advanced_vulns = results['advanced_tests'].get('vulnerabilities', [])
+            vuln_types = set(vuln.get('type', '') for vuln in advanced_vulns)
+            
+            if 'Permissive CORS Policy' in vuln_types or 'CORS Credentials Exposure' in vuln_types:
+                recommendations.append("Configure CORS policy to restrict origins and disable credentials with wildcard")
+            if 'Missing CSRF Protection' in vuln_types or 'Missing SameSite Cookie Attribute' in vuln_types:
+                recommendations.append("Implement CSRF protection tokens and configure SameSite cookie attributes")
+            if 'Open Redirect' in vuln_types:
+                recommendations.append("Validate all redirect URLs against a whitelist of allowed destinations")
+            if 'Host Header Injection' in vuln_types or 'Password Reset Poisoning' in vuln_types:
+                recommendations.append("Validate Host header and use absolute URLs in password reset emails")
+            if 'API Information Disclosure' in vuln_types or 'Exposed API Documentation' in vuln_types:
+                recommendations.append("Secure API endpoints and restrict access to API documentation")
+            if 'Missing Subresource Integrity' in vuln_types:
+                recommendations.append("Add integrity attributes to all external scripts and stylesheets")
+            if 'GraphQL Introspection Enabled' in vuln_types or 'GraphQL Query Depth Not Limited' in vuln_types:
+                recommendations.append("Disable GraphQL introspection and implement query depth limiting")
         
         # Add general recommendations
         recommendations.extend([

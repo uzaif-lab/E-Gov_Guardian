@@ -30,22 +30,22 @@
                 <div class="row">
                     <div class="col-md-3">
                         <div class="text-center p-3 border rounded">
-                            {% set risk_color = 'success' if results.executive_summary.risk_rating == 'LOW' 
-                                           else 'warning' if results.executive_summary.risk_rating == 'MEDIUM'
+                            {% set risk_color = 'success' if results.risk_rating == 'Low' 
+                                           else 'warning' if results.risk_rating == 'Medium'
                                            else 'danger' %}
                             <h3 class="text-{{ risk_color }} mb-1">
-                                {{ results.executive_summary.risk_rating }}
+                                {{ results.risk_rating|upper }}
                             </h3>
                             <small class="text-muted">Risk Rating</small>
                         </div>
                     </div>
                     <div class="col-md-3">
                         <div class="text-center p-3 border rounded">
-                            {% set score_color = 'success' if results.executive_summary.compliance_score >= 80
-                                            else 'warning' if results.executive_summary.compliance_score >= 60
+                            {% set score_color = 'success' if results.compliance_score >= 80
+                                            else 'warning' if results.compliance_score >= 60
                                             else 'danger' %}
                             <h3 class="text-{{ score_color }} mb-1">
-                                {{ results.executive_summary.compliance_score }}/100
+                                {{ results.compliance_score }}/100
                             </h3>
                             <small class="text-muted">Compliance Score</small>
                         </div>
