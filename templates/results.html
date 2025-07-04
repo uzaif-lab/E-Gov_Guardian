@@ -102,6 +102,18 @@
                                 </div>
                             {% endif %}
                         {% endfor %}
+                        
+                        {% if results.executive_summary.authentication_methods %}
+                            <div class="mt-4">
+                                <h6 class="mb-3">Authentication Methods Detected:</h6>
+                                {% for method in results.executive_summary.authentication_methods %}
+                                    <div class="d-flex align-items-center mb-2">
+                                        <i class="fas fa-key text-primary me-2"></i>
+                                        <span>{{ method }}</span>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -126,6 +138,130 @@
                 </div>
             </div>
         </div>
+
+        {% if results.method_specific_recommendations %}
+            <!-- Authentication Method Specific Recommendations -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-shield-alt me-2"></i>
+                        Authentication Method Security Analysis
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for method, recs in results.method_specific_recommendations.items() %}
+                            <div class="col-md-6 mb-4">
+                                <div class="card h-100 border-primary">
+                                    <div class="card-header bg-primary bg-opacity-10">
+                                        <h6 class="mb-0">
+                                            <i class="fas fa-key me-2"></i>
+                                            {{ method }} Security Analysis
+                                        </h6>
+                                    </div>
+                                    <div class="card-body">
+                                        {% if recs.security_rating %}
+                                            <div class="mb-3">
+                                                <strong>Security Rating:</strong>
+                                                <span class="badge bg-{{ 'success' if recs.security_rating == 'Good' else 'warning' if recs.security_rating == 'Fair' else 'danger' }} ms-2">
+                                                    {{ recs.security_rating }}
+                                                </span>
+                                            </div>
+                                        {% endif %}
+                                        
+                                        {% if recs.recommendations %}
+                                            <h6 class="mb-2">Recommendations:</h6>
+                                            <ul class="list-unstyled">
+                                                {% for rec in recs.recommendations %}
+                                                    <li class="mb-2">
+                                                        <i class="fas fa-check text-success me-2"></i>
+                                                        {{ rec }}
+                                                    </li>
+                                                {% endfor %}
+                                            </ul>
+                                        {% endif %}
+                                        
+                                        {% if recs.compliance_issues %}
+                                            <h6 class="mb-2 mt-3">Compliance Issues:</h6>
+                                            <ul class="list-unstyled">
+                                                {% for issue in recs.compliance_issues %}
+                                                    <li class="mb-2">
+                                                        <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                                                        {{ issue }}
+                                                    </li>
+                                                {% endfor %}
+                                            </ul>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if results.ai_security_assessment %}
+            <!-- AI Security Assessment -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-robot me-2"></i>
+                        AI Security Assessment
+                        <span class="badge bg-gradient ms-2" style="background: linear-gradient(45deg, #6366f1, #8b5cf6) !important;">
+                            🧠 AI Powered
+                        </span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Overall Security Analysis:</h6>
+                            <div class="alert alert-info border-start border-4">
+                                {{ results.ai_security_assessment.overall_analysis }}
+                            </div>
+                            
+                            {% if results.ai_security_assessment.compliance_status %}
+                                <h6 class="mt-4">Compliance Status:</h6>
+                                <ul class="list-unstyled">
+                                    {% for item in results.ai_security_assessment.compliance_status %}
+                                        <li class="mb-2">
+                                            <i class="fas fa-clipboard-check text-primary me-2"></i>
+                                            {{ item }}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            {% if results.ai_security_assessment.critical_areas %}
+                                <h6>Critical Areas:</h6>
+                                <ul class="list-unstyled">
+                                    {% for area in results.ai_security_assessment.critical_areas %}
+                                        <li class="mb-2">
+                                            <i class="fas fa-exclamation-circle text-danger me-2"></i>
+                                            {{ area }}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                            
+                            {% if results.ai_security_assessment.improvement_suggestions %}
+                                <h6 class="mt-4">Improvement Suggestions:</h6>
+                                <ul class="list-unstyled">
+                                    {% for suggestion in results.ai_security_assessment.improvement_suggestions %}
+                                        <li class="mb-2">
+                                            <i class="fas fa-lightbulb text-warning me-2"></i>
+                                            {{ suggestion }}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endif %}
 
         <!-- Detailed Vulnerabilities -->
         <div class="card">
@@ -185,6 +321,36 @@
                                             <h6>Technical Details:</h6>
                                             <pre class="bg-light p-2 rounded"><code>{{ vulnerability.details }}</code></pre>
                                             
+                                            {% if vulnerability.get('auth_context') %}
+                                                <h6 class="mt-3">Authentication Context:</h6>
+                                                <div class="alert alert-secondary">
+                                                    {% if vulnerability.auth_context.affected_methods %}
+                                                        <div class="mb-2">
+                                                            <strong>Affected Methods:</strong>
+                                                            {% for method in vulnerability.auth_context.affected_methods %}
+                                                                <span class="badge bg-info me-1">{{ method }}</span>
+                                                            {% endfor %}
+                                                        </div>
+                                                    {% endif %}
+                                                    
+                                                    {% if vulnerability.auth_context.authentication_flow %}
+                                                        <div class="mb-2">
+                                                            <strong>Authentication Flow:</strong>
+                                                            {{ vulnerability.auth_context.authentication_flow }}
+                                                        </div>
+                                                    {% endif %}
+                                                    
+                                                    {% if vulnerability.auth_context.impact_level %}
+                                                        <div>
+                                                            <strong>Impact Level:</strong>
+                                                            <span class="badge bg-{{ 'danger' if vulnerability.auth_context.impact_level == 'High' else 'warning' if vulnerability.auth_context.impact_level == 'Medium' else 'success' }}">
+                                                                {{ vulnerability.auth_context.impact_level }}
+                                                            </span>
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                            {% endif %}
+                                            
                                             {% if vulnerability.get('remediation') %}
                                                 <h6 class="mt-3">
                                                     Remediation:
@@ -198,7 +364,8 @@
                                                     {% if vulnerability.get('ai_powered') %}
                                                         <div class="alert alert-info border-start border-primary border-4 mb-0">
                                                             <i class="fas fa-robot me-2"></i>
-                                                            <strong>AI Fix Advisor:</strong> {{ vulnerability.remediation }}
+                                                            <strong>AI Fix Advisor:</strong><br>
+                                                            {{ vulnerability.remediation|safe|replace('\n', '<br>')|safe }}
                                                         </div>
                                                     {% else %}
                                                         <p class="text-muted">{{ vulnerability.remediation }}</p>

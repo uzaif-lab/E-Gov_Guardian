@@ -11,7 +11,7 @@ from openai import OpenAI
 class AIFixAdvisor:
     """AI-powered vulnerability fix advisor using OpenAI GPT-3.5-turbo"""
     
-    def __init__(self, api_key: str, model: str = "gpt-3.5-turbo", max_tokens: int = 150, temperature: float = 0.1):
+    def __init__(self, api_key: str, model: str = "gpt-3.5-turbo", max_tokens: int = 1000, temperature: float = 0.1):
         self.logger = logging.getLogger(__name__)
         self.client = OpenAI(api_key=api_key)
         self.model = model
@@ -19,193 +19,255 @@ class AIFixAdvisor:
         self.temperature = temperature
         
     def analyze_vulnerabilities(self, scan_results: Dict[str, Any]) -> Dict[str, Any]:
-        """Process scan results and add AI recommendations"""
-        if not self._is_api_available():
-            self.logger.warning("OpenAI API not available, skipping AI analysis")
-            # Add AI analysis status to scan results
-            scan_results['ai_analysis_status'] = {
-                'attempted': True,
-                'successful': False,
-                'error': 'OpenAI API not available',
-                'recommendations_count': 0
+        """Process scan results and provide AI-powered recommendations"""
+        try:
+            vulnerabilities = scan_results.get('vulnerabilities', [])
+            scan_type = scan_results.get('scan_type', 'general')
+            
+            # Process each vulnerability
+            for vuln in vulnerabilities:
+                recommendation = self._get_vulnerability_recommendation(
+                    vuln_type=vuln['type'],
+                    vulnerability=vuln
+                )
+                if recommendation:
+                    vuln['ai_recommendation'] = recommendation
+            
+            # Generate overall analysis
+            analysis = {
+                'recommendations': [],
+                'summary': '',
+                'ai_analysis_status': {
+                    'processed_vulnerabilities': len(vulnerabilities),
+                    'recommendations_generated': len([v for v in vulnerabilities if 'ai_recommendation' in v]),
+                    'scan_type': scan_type
+                }
             }
-            return scan_results
             
-        self.logger.info("🧠 Starting AI analysis for vulnerability recommendations...")
-        
-        total_processed = 0
-        total_failures = 0
-        
-        # Process different types of vulnerabilities
-        if 'results' in scan_results:
-            results = scan_results['results']
+            # Get overall recommendations
+            if vulnerabilities:
+                analysis['recommendations'] = self._get_overall_recommendations(scan_results)
+                analysis['summary'] = self._generate_executive_summary(scan_results)
             
-            # Process built-in scanner vulnerabilities
-            if 'vulnerability_scan' in results:
-                vuln_scan = results['vulnerability_scan']
-                if 'vulnerabilities' in vuln_scan:
-                    for vuln_type, vulns in vuln_scan['vulnerabilities'].items():
-                        if isinstance(vulns, list) and vulns:
-                            self.logger.info(f"🔍 Processing {len(vulns)} {vuln_type} vulnerabilities")
-                            for vuln in vulns:
-                                recommendation = self._get_vulnerability_recommendation(vuln_type, vuln)
-                                if recommendation:
-                                    vuln['ai_recommendation'] = recommendation
-                                    total_processed += 1
-                                else:
-                                    total_failures += 1
+            return analysis
             
-            # Process security headers issues
-            if 'security_headers' in results:
-                headers_result = results['security_headers']
-                if 'missing_headers' in headers_result:
-                    header_count = len(headers_result['missing_headers'])
-                    self.logger.info(f"🔍 Processing {header_count} security header issues")
-                    for header_issue in headers_result['missing_headers']:
-                        recommendation = self._get_header_recommendation(header_issue)
-                        if recommendation:
-                            header_issue['ai_recommendation'] = recommendation
-                            total_processed += 1
-                        else:
-                            total_failures += 1
-            
-            # Process cookie security issues
-            if 'cookie_security' in results:
-                cookie_result = results['cookie_security']
-                if 'insecure_cookies' in cookie_result:
-                    cookie_count = len(cookie_result['insecure_cookies'])
-                    self.logger.info(f"🔍 Processing {cookie_count} cookie security issues")
-                    for cookie_issue in cookie_result['insecure_cookies']:
-                        recommendation = self._get_cookie_recommendation(cookie_issue)
-                        if recommendation:
-                            cookie_issue['ai_recommendation'] = recommendation
-                            total_processed += 1
-                        else:
-                            total_failures += 1
-        
-        # Add AI analysis status to scan results
-        if total_processed > 0:
-            self.logger.info(f"✅ AI analysis completed - {total_processed} recommendations generated")
-            status_msg = f"✅ Successfully generated {total_processed} AI recommendations"
-        else:
-            self.logger.warning(f"⚠️ AI analysis failed - {total_failures} failures encountered")
-            status_msg = f"⚠️ AI analysis failed - likely due to API quota or connectivity issues"
-        
-        scan_results['ai_analysis_status'] = {
-            'attempted': True,
-            'successful': total_processed > 0,
-            'recommendations_count': total_processed,
-            'failures_count': total_failures,
-            'status_message': status_msg
-        }
-        
-        return scan_results
+        except Exception as e:
+            self.logger.error(f"Error in AI analysis: {str(e)}")
+            return {
+                'error': str(e),
+                'recommendations': [],
+                'summary': 'AI analysis failed'
+            }
     
     def _get_vulnerability_recommendation(self, vuln_type: str, vulnerability: Dict[str, Any]) -> Optional[str]:
-        """Get AI recommendation for a specific vulnerability"""
+        """Get detailed recommendation for a specific vulnerability"""
         try:
-            prompt = self._create_vulnerability_prompt(vuln_type, vulnerability)
+            # Prepare vulnerability context
+            scan_type = vulnerability.get('scan_type', 'general')
+            auth_methods = vulnerability.get('auth_methods', [])
+            auth_context = vulnerability.get('authentication_context', {})
+            
+            # Build prompt based on scan type
+            if scan_type == 'estonian_login':
+                prompt = self._build_estonian_prompt(vulnerability, auth_methods, auth_context)
+            else:
+                prompt = self._build_general_prompt(vulnerability)
+            
+            # Get AI recommendation
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You are a cybersecurity expert. Provide concise, actionable fix recommendations in 1-2 lines. Focus on exact code examples."},
+                    {"role": "system", "content": "You are a cybersecurity expert specializing in authentication systems and Estonian e-ID services. Provide detailed, actionable security recommendations."},
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=self.max_tokens,
                 temperature=self.temperature
             )
             
-            recommendation = response.choices[0].message.content.strip()
-            time.sleep(0.1)  # Rate limiting
-            return recommendation
+            return response.choices[0].message.content.strip()
             
         except Exception as e:
-            self.logger.warning(f"Failed to get AI recommendation for {vuln_type}: {str(e)}")
+            self.logger.error(f"Error getting recommendation: {str(e)}")
             return None
     
-    def _get_header_recommendation(self, header_issue: Dict[str, Any]) -> Optional[str]:
-        """Get AI recommendation for security header issues"""
+    def _build_estonian_prompt(self, vulnerability: Dict[str, Any], auth_methods: List[str], auth_context: Dict[str, Any]) -> str:
+        """Build detailed prompt for Estonian authentication vulnerabilities"""
+        vuln_type = vulnerability.get('type', '')
+        description = vulnerability.get('description', '')
+        severity = vulnerability.get('severity', 'MEDIUM')
+        affected_methods = auth_context.get('affected_methods', [])
+        impact_level = auth_context.get('impact_level', 'Unknown')
+        auth_flow = auth_context.get('authentication_flow', 'Unknown')
+        
+        prompt = f"""Analyze this Estonian authentication security issue and provide detailed recommendations:
+
+VULNERABILITY DETAILS:
+- Type: {vuln_type}
+- Description: {description}
+- Severity: {severity}
+- Impact Level: {impact_level}
+- Authentication Flow: {auth_flow}
+- Affected Methods: {', '.join(affected_methods)}
+- Available Auth Methods: {', '.join(auth_methods)}
+
+Please provide a comprehensive security recommendation including:
+
+1. DETAILED ISSUE ANALYSIS:
+- Explain the security implications specific to Estonian e-ID authentication
+- Describe how this affects each impacted authentication method
+- Outline potential attack scenarios
+
+2. TECHNICAL SOLUTION:
+- Step-by-step fix instructions with code examples where relevant
+- Configuration changes needed
+- Security headers or parameters to implement
+- Validation and verification steps
+
+3. AUTHENTICATION-SPECIFIC MEASURES:
+- e-ID specific security controls
+- Mobile-ID specific configurations
+- Smart-ID specific requirements
+- Cross-method security considerations
+
+4. COMPLIANCE REQUIREMENTS:
+- eIDAS regulation requirements
+- Estonian Trust Services compliance
+- GDPR considerations
+- Technical standards to follow
+
+5. BEST PRACTICES:
+- Industry standard security controls
+- Estonian authentication best practices
+- Monitoring and logging recommendations
+- Security testing procedures
+
+Format the response with clear sections and actionable steps."""
+        
+        return prompt
+    
+    def _build_general_prompt(self, vulnerability: Dict[str, Any]) -> str:
+        """Build prompt for general vulnerabilities"""
+        base_info = f"Vulnerability Type: {vulnerability.get('type', '')}\n"
+        
+        # Add all available vulnerability information
+        for key, value in vulnerability.items():
+            if key not in ['ai_recommendation', 'type'] and value:
+                base_info += f"{key.replace('_', ' ').title()}: {value}\n"
+        
+        return base_info
+    
+    def _get_overall_recommendations(self, scan_results: Dict[str, Any]) -> List[str]:
+        """Generate overall recommendations based on all findings"""
         try:
-            header_name = header_issue.get('header', 'Unknown')
-            prompt = f"How to fix missing security header '{header_name}'? Provide exact header value and brief explanation in 1-2 lines."
+            scan_type = scan_results.get('scan_type', 'general')
+            vulnerabilities = scan_results.get('vulnerabilities', [])
             
+            if scan_type == 'estonian_login':
+                auth_methods = scan_results.get('authentication_methods_found', [])
+                
+                # Build comprehensive prompt for Estonian authentication
+                prompt = f"""Analyze these security findings for an Estonian authentication system:
+
+SCAN CONTEXT:
+- Authentication Methods: {', '.join(auth_methods)}
+- Total Vulnerabilities: {len(vulnerabilities)}
+- High Severity Issues: {len([v for v in vulnerabilities if v.get('severity') == 'HIGH'])}
+
+Provide comprehensive recommendations covering:
+
+1. OVERALL SECURITY ASSESSMENT:
+- System-wide security posture
+- Critical areas needing immediate attention
+- Authentication flow security
+
+2. METHOD-SPECIFIC RECOMMENDATIONS:
+- e-ID security improvements
+- Mobile-ID security enhancements
+- Smart-ID security measures
+- Cross-method security controls
+
+3. COMPLIANCE AND STANDARDS:
+- eIDAS compliance measures
+- Estonian Trust Services requirements
+- GDPR compliance steps
+- Technical standards implementation
+
+4. SECURITY HARDENING:
+- Infrastructure security
+- API security
+- Client-side security
+- Monitoring and incident response
+
+Please provide detailed, actionable recommendations with specific steps and examples."""
+                
+            else:
+                # ... existing general prompt ...
+                pass
+            
+            # Get AI recommendations
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You are a web security expert. Provide exact HTTP header values and brief explanations."},
+                    {"role": "system", "content": "You are a cybersecurity expert specializing in authentication systems and Estonian e-ID services. Provide detailed, actionable security recommendations."},
                     {"role": "user", "content": prompt}
                 ],
                 max_tokens=self.max_tokens,
                 temperature=self.temperature
             )
             
-            recommendation = response.choices[0].message.content.strip()
-            time.sleep(0.1)  # Rate limiting
-            return recommendation
+            # Parse and format recommendations
+            recommendations = response.choices[0].message.content.strip().split('\n\n')
+            return [rec.strip() for rec in recommendations if rec.strip()]
             
         except Exception as e:
-            self.logger.warning(f"Failed to get header recommendation: {str(e)}")
-            return None
+            self.logger.error(f"Error generating overall recommendations: {str(e)}")
+            return []
     
-    def _get_cookie_recommendation(self, cookie_issue: Dict[str, Any]) -> Optional[str]:
-        """Get AI recommendation for cookie security issues"""
+    def _generate_executive_summary(self, scan_results: Dict[str, Any]) -> str:
+        """Generate an executive summary of the security assessment"""
         try:
-            cookie_name = cookie_issue.get('name', 'cookie')
-            issues = cookie_issue.get('issues', [])
-            prompt = f"Cookie '{cookie_name}' has issues: {', '.join(issues)}. How to fix? Provide exact cookie attribute in 1-2 lines."
+            scan_type = scan_results.get('scan_type', 'general')
+            vulnerabilities = scan_results.get('vulnerabilities', [])
             
+            if scan_type == 'estonian_login':
+                auth_methods = scan_results.get('authentication_methods_found', [])
+                high_severity = len([v for v in vulnerabilities if v.get('severity') == 'HIGH'])
+                medium_severity = len([v for v in vulnerabilities if v.get('severity') == 'MEDIUM'])
+                
+                prompt = f"""Generate an executive summary for an Estonian authentication security assessment:
+
+SCAN OVERVIEW:
+- Authentication Methods: {', '.join(auth_methods)}
+- Total Issues: {len(vulnerabilities)}
+- High Severity: {high_severity}
+- Medium Severity: {medium_severity}
+
+Create a concise executive summary that covers:
+1. Overall security posture
+2. Critical findings and their impact
+3. Authentication system security
+4. Compliance status
+5. Key recommendations
+
+Focus on business impact and risk levels. Be specific about Estonian e-ID implications."""
+                
+            else:
+                # ... existing general prompt ...
+                pass
+            
+            # Get AI summary
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You are a web security expert. Provide exact cookie attributes and brief explanations."},
+                    {"role": "system", "content": "You are a cybersecurity expert specializing in authentication systems and Estonian e-ID services. Provide clear, business-focused security assessments."},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=self.max_tokens,
-                temperature=self.temperature
+                max_tokens=500,
+                temperature=0.1
             )
             
-            recommendation = response.choices[0].message.content.strip()
-            time.sleep(0.1)  # Rate limiting
-            return recommendation
+            return response.choices[0].message.content.strip()
             
         except Exception as e:
-            self.logger.warning(f"Failed to get cookie recommendation: {str(e)}")
-            return None
-    
-    def _create_vulnerability_prompt(self, vuln_type: str, vulnerability: Dict[str, Any]) -> str:
-        """Create a specific prompt for the vulnerability type"""
-        base_info = f"Vulnerability: {vuln_type}\n"
-        
-        if 'url' in vulnerability:
-            base_info += f"URL: {vulnerability['url']}\n"
-        if 'parameter' in vulnerability:
-            base_info += f"Parameter: {vulnerability['parameter']}\n"
-        if 'payload' in vulnerability:
-            base_info += f"Payload: {vulnerability['payload']}\n"
-        if 'evidence' in vulnerability:
-            base_info += f"Evidence: {vulnerability['evidence']}\n"
-        
-        vulnerability_prompts = {
-            'sql_injection': f"{base_info}\nHow to fix this SQL injection? Provide exact parameterized query example in 1-2 lines.",
-            'xss': f"{base_info}\nHow to prevent this XSS? Provide exact input sanitization code in 1-2 lines.",
-            'directory_traversal': f"{base_info}\nHow to prevent directory traversal? Provide exact path validation code in 1-2 lines.",
-            'command_injection': f"{base_info}\nHow to prevent command injection? Provide exact input validation code in 1-2 lines.",
-            'http_methods': f"{base_info}\nHow to disable dangerous HTTP methods? Provide exact server configuration in 1-2 lines.",
-            'information_disclosure': f"{base_info}\nHow to prevent this information disclosure? Provide exact fix in 1-2 lines."
-        }
-        
-        return vulnerability_prompts.get(vuln_type, f"{base_info}\nHow to fix this vulnerability? Provide exact solution in 1-2 lines.")
-    
-    def _is_api_available(self) -> bool:
-        """Check if OpenAI API is available"""
-        try:
-            # Simple test call
-            self.client.chat.completions.create(
-                model=self.model,
-                messages=[{"role": "user", "content": "test"}],
-                max_tokens=1
-            )
-            return True
-        except Exception as e:
-            self.logger.error(f"OpenAI API unavailable: {str(e)}")
-            return False 
+            self.logger.error(f"Error generating executive summary: {str(e)}")
+            return "Failed to generate executive summary" 

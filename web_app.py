@@ -13,8 +13,9 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, BooleanField, SubmitField
 from wtforms.validators import DataRequired, URL
 
-# Import our scanner
+# Import our scanners
 from scanner.main_scanner import SecurityScanner
+from scanner.estonian_login_scanner import EstonianLoginScanner
 
 app = Flask(__name__)
 app.secret_key = 'egov-guardian-security-scanner-in-memory-2024'
@@ -236,6 +237,14 @@ class ScanForm(FlaskForm):
     test_graphql = BooleanField('GraphQL Security')
     
     submit = SubmitField('Start Security Scan')
+
+class EstonianScanForm(FlaskForm):
+    """Form for Estonian e-ID login page scanning"""
+    estonian_url = StringField('Estonian Login Page URL', validators=[DataRequired(), URL()], 
+                             render_kw={"placeholder": "https://login.eesti.ee/"})
+    estonian_ai_analysis = BooleanField('🧠 AI Fix Advisor (Get AI-powered recommendations for e-ID security)')
+    
+    submit_estonian = SubmitField('Start Estonian e-ID Security Scan')
 
 def generate_pdf_report_in_memory(json_data):
     """Generate PDF report from JSON data in memory using ReportLab"""
@@ -523,11 +532,217 @@ def run_scan_async(scan_id, target_url, deep_scan, ai_analysis=False, selected_t
         }
         save_scan_status(scan_status)
 
+def run_estonian_scan_async(scan_id: str, target_url: str, ai_analysis: bool = False):
+    """Run Estonian e-ID login page security scan asynchronously"""
+    import logging
+    logger = logging.getLogger(__name__)
+    current_timestamp = time.time()
+    
+    try:
+        logger.info(f"Starting Estonian e-ID scan for {target_url} (AI Analysis: {ai_analysis})")
+        
+        # Update status
+        scan_status = load_scan_status()
+        scan_status[scan_id]['status'] = 'running'
+        scan_status[scan_id]['progress'] = 10
+        save_scan_status(scan_status)
+        
+        # Initialize Estonian scanner
+        estonian_scanner = EstonianLoginScanner()
+        
+        scan_status[scan_id]['progress'] = 25
+        save_scan_status(scan_status)
+        
+        # Run Estonian scan with AI analysis flag
+        result = estonian_scanner.scan_estonian_login_page(target_url, ai_analysis=ai_analysis)
+        
+        scan_status[scan_id]['progress'] = 75
+        save_scan_status(scan_status)
+        
+        # Transform results for web interface
+        web_results = transform_estonian_scanner_results(result, ai_analysis)
+        
+        # Add timestamp for cleanup
+        if 'scan_info' not in web_results:
+            web_results['scan_info'] = {}
+        web_results['scan_info']['timestamp_numeric'] = current_timestamp
+        web_results['scan_info']['scan_type'] = 'estonian_login'
+        
+        scan_status[scan_id]['progress'] = 100
+        scan_status[scan_id]['status'] = 'completed'
+        save_scan_status(scan_status)
+        scan_results = load_scan_results()
+        scan_results[scan_id] = web_results
+        save_scan_results(scan_results)
+        
+        logger.info(f"Estonian scan completed successfully for {target_url}")
+        
+    except Exception as e:
+        logger.error(f"Estonian scan failed for {target_url}: {str(e)}")
+        import traceback
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        scan_status = load_scan_status()
+        scan_status[scan_id] = {
+            'status': 'error', 
+            'error': str(e),
+            'timestamp': time.time()
+        }
+        save_scan_status(scan_status)
+
+def transform_estonian_scanner_results(scanner_output: dict, ai_analysis: bool = False) -> dict:
+    """Transform Estonian scanner output to match web template format"""
+    vulnerabilities = scanner_output.get('vulnerabilities', [])
+    ai_analysis_attempted = scanner_output.get('ai_analysis_enabled', False)
+    ai_recommendations_found = 0
+    
+    # Process vulnerabilities and count AI recommendations
+    processed_vulnerabilities = []
+    for vuln in vulnerabilities:
+        # Check for AI recommendation
+        ai_recommendation = vuln.get('ai_recommendation', '')
+        if ai_recommendation:
+            ai_recommendations_found += 1
+            
+        # Get authentication context
+        auth_context = vuln.get('authentication_context', {})
+        affected_methods = auth_context.get('affected_methods', [])
+        auth_flow = auth_context.get('authentication_flow', '')
+        
+        # Build detailed description
+        detailed_description = vuln.get('description', 'Security vulnerability detected')
+        if affected_methods:
+            detailed_description += f"\nAffected Authentication Methods: {', '.join(affected_methods)}"
+        if auth_flow:
+            detailed_description += f"\nAuthentication Flow: {auth_flow}"
+            
+        processed_vuln = {
+            'type': vuln.get('type', 'Security Issue'),
+            'severity': vuln.get('severity', 'MEDIUM').upper(),
+            'description': detailed_description,
+            'location': vuln.get('location', ''),
+            'details': vuln.get('evidence', 'See vulnerability details'),
+            'remediation': ai_recommendation if ai_recommendation else vuln.get('recommendation', 'Address the security issue'),
+            'ai_powered': bool(ai_recommendation),
+            'auth_context': auth_context  # Include full auth context for UI
+        }
+        processed_vulnerabilities.append(processed_vuln)
+    
+    # Calculate severity counts
+    severity_counts = {'HIGH': 0, 'MEDIUM': 0, 'LOW': 0}
+    for vuln in processed_vulnerabilities:
+        severity = vuln.get('severity', 'MEDIUM')
+        if severity in severity_counts:
+            severity_counts[severity] += 1
+    
+    # Get method-specific recommendations
+    method_recommendations = {}
+    for method in scanner_output.get('authentication_methods_found', []):
+        method_key = f'{method.lower()}_recommendations'
+        if method_key in scanner_output:
+            method_recommendations[method] = scanner_output[method_key]
+    
+    # Calculate risk rating based on vulnerabilities
+    total_vulns = len(processed_vulnerabilities)
+    high_vulns = severity_counts['HIGH']
+    medium_vulns = severity_counts['MEDIUM']
+    
+    if high_vulns > 3:
+        risk_rating = 'Critical'
+    elif high_vulns > 0 or medium_vulns > 5:
+        risk_rating = 'High'
+    elif medium_vulns > 2 or total_vulns > 5:
+        risk_rating = 'Medium'
+    elif total_vulns > 0:
+        risk_rating = 'Low'
+    else:
+        risk_rating = 'Minimal'
+    
+    # Calculate compliance score (higher is better)
+    max_possible_score = 100
+    deduction_per_high = 15
+    deduction_per_medium = 8
+    deduction_per_low = 3
+    
+    compliance_score = max_possible_score - (
+        high_vulns * deduction_per_high +
+        medium_vulns * deduction_per_medium +
+        severity_counts['LOW'] * deduction_per_low
+    )
+    compliance_score = max(0, min(100, compliance_score))
+    
+    # Determine AI analysis status message
+    ai_status_message = ""
+    if ai_analysis_attempted:
+        if ai_recommendations_found > 0:
+            ai_status_message = f"✅ AI analysis completed - {ai_recommendations_found} AI-powered recommendations generated"
+        else:
+            ai_status_message = "⚠️ AI analysis attempted but failed (likely due to OpenAI API quota limits or connectivity issues)"
+    else:
+        ai_status_message = "ℹ️ AI analysis not requested for this scan"
+    
+    # Get AI recommendations and security assessment
+    recommendations = []
+    if scanner_output.get('ai_security_assessment'):
+        assessment = scanner_output['ai_security_assessment']
+        recommendations.extend(assessment.get('recommendations', []))
+        
+        # Add method-specific recommendations
+        for method, recs in method_recommendations.items():
+            if recs.get('recommendations'):
+                recommendations.extend([f"[{method}] {rec}" for rec in recs['recommendations'][:2]])
+    
+    if not recommendations:
+        # Fallback to basic recommendations
+        if high_vulns > 0:
+            recommendations.append("Immediately address all HIGH severity vulnerabilities")
+        if medium_vulns > 0:
+            recommendations.append("Review and fix MEDIUM severity issues to improve security posture")
+        if 'HTTPS' in str(vulnerabilities):
+            recommendations.append("Ensure all Estonian e-ID authentication uses strong HTTPS/TLS")
+        if 'Header' in str(vulnerabilities):
+            recommendations.append("Implement comprehensive security headers for e-ID protection")
+        recommendations.append("Regular security assessments recommended for e-ID authentication systems")
+    
+    # Format for web template
+    web_format = {
+        'target': scanner_output.get('target_url', ''),
+        'risk_rating': risk_rating,
+        'compliance_score': compliance_score,
+        'executive_summary': {
+            'total_vulnerabilities': total_vulns,
+            'high_risk_issues': high_vulns,
+            'medium_risk_issues': medium_vulns,
+            'low_risk_issues': severity_counts['LOW'],
+            'recommendations': recommendations[:5],  # Limit to top 5
+            'ai_status': ai_status_message,
+            'ai_recommendations_count': ai_recommendations_found,
+            'authentication_methods': scanner_output.get('authentication_methods_found', [])
+        },
+        'vulnerabilities': processed_vulnerabilities,
+        'scan_info': {
+            'timestamp': scanner_output.get('scan_start_time', time.time()),
+            'scanner_version': '2.0.0-Estonian',
+            'scan_duration': scanner_output.get('scan_duration', 0),
+            'scan_type': 'Estonian e-ID Login Page Security Scan'
+        },
+        'estonian_specific_findings': scanner_output.get('estonian_specific_findings', {}),
+        'ai_analysis_enabled': ai_analysis_attempted,
+        'ai_recommendations_found': ai_recommendations_found,
+        'method_specific_recommendations': method_recommendations
+    }
+    
+    # Add AI security assessment if available
+    if scanner_output.get('ai_security_assessment'):
+        web_format['ai_security_assessment'] = scanner_output['ai_security_assessment']
+    
+    return web_format
+
 @app.route('/')
 def index():
     """Main page with scan form"""
     form = ScanForm()
-    return render_template('index.html', form=form)
+    estonian_form = EstonianScanForm()
+    return render_template('index.html', form=form, estonian_form=estonian_form)
 
 @app.route('/scan', methods=['POST'])
 def start_scan():
@@ -581,6 +796,44 @@ def start_scan():
     
     # If form validation failed
     for field, errors in form.errors.items():
+        for error in errors:
+            flash(f'Error in {field}: {error}', 'error')
+    return redirect(url_for('index'))
+
+@app.route('/estonian-scan', methods=['POST'])
+def start_estonian_scan():
+    """Start a new Estonian e-ID login page security scan"""
+    estonian_form = EstonianScanForm()
+    if estonian_form.validate_on_submit():
+        target_url = estonian_form.estonian_url.data
+        ai_analysis = estonian_form.estonian_ai_analysis.data
+        
+        # Generate unique scan ID
+        scan_id = str(uuid.uuid4())
+        
+        # Initialize scan status
+        save_scan_status({
+            scan_id: {
+                'status': 'starting',
+                'progress': 0,
+                'timestamp': time.time(),
+                'scan_type': 'estonian_login'
+            }
+        })
+        
+        # Start Estonian scan in background thread
+        scan_thread = threading.Thread(
+            target=run_estonian_scan_async,
+            args=(scan_id, target_url, ai_analysis)
+        )
+        scan_thread.daemon = True
+        scan_thread.start()
+        
+        # Redirect to scan progress page
+        return redirect(url_for('scan_progress', scan_id=scan_id))
+    
+    # If form validation failed
+    for field, errors in estonian_form.errors.items():
         for error in errors:
             flash(f'Error in {field}: {error}', 'error')
     return redirect(url_for('index'))
