@@ -201,8 +201,42 @@ Provide comprehensive recommendations covering:
 Please provide detailed, actionable recommendations with specific steps and examples."""
                 
             else:
-                # ... existing general prompt ...
-                pass
+                # Build comprehensive prompt for general security assessment
+                high_severity = len([v for v in vulnerabilities if v.get('severity') == 'HIGH'])
+                medium_severity = len([v for v in vulnerabilities if v.get('severity') == 'MEDIUM'])
+                vuln_types = set(v.get('type', '') for v in vulnerabilities)
+                
+                prompt = f"""Analyze these security findings and provide comprehensive recommendations:
+
+SCAN CONTEXT:
+- Total Vulnerabilities: {len(vulnerabilities)}
+- High Severity Issues: {high_severity}
+- Medium Severity Issues: {medium_severity}
+- Vulnerability Types: {', '.join(vuln_types)}
+
+Provide detailed recommendations covering:
+
+1. CRITICAL SECURITY FIXES:
+- High-priority vulnerabilities
+- Immediate action items
+- Risk mitigation steps
+
+2. SECURITY IMPROVEMENTS:
+- Medium-priority issues
+- System hardening measures
+- Security best practices
+
+3. INFRASTRUCTURE SECURITY:
+- Network security
+- System configuration
+- Access controls
+
+4. MONITORING AND MAINTENANCE:
+- Security monitoring
+- Incident response
+- Regular security testing
+
+Please provide specific, actionable recommendations with implementation steps."""
             
             # Get AI recommendations
             response = self.client.chat.completions.create(
@@ -249,25 +283,42 @@ Create a concise executive summary that covers:
 4. Compliance status
 5. Key recommendations
 
-Focus on business impact and risk levels. Be specific about Estonian e-ID implications."""
-                
+Focus on business impact and critical security concerns."""
             else:
-                # ... existing general prompt ...
-                pass
+                high_severity = len([v for v in vulnerabilities if v.get('severity') == 'HIGH'])
+                medium_severity = len([v for v in vulnerabilities if v.get('severity') == 'MEDIUM'])
+                vuln_types = set(v.get('type', '') for v in vulnerabilities)
+                
+                prompt = f"""Generate an executive summary for a security assessment:
+
+SCAN OVERVIEW:
+- Total Issues: {len(vulnerabilities)}
+- High Severity: {high_severity}
+- Medium Severity: {medium_severity}
+- Vulnerability Types: {', '.join(vuln_types)}
+
+Create a concise executive summary that covers:
+1. Overall security posture
+2. Critical findings and their impact
+3. Risk assessment
+4. Key recommendations
+5. Next steps
+
+Focus on business impact and actionable insights."""
             
             # Get AI summary
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You are a cybersecurity expert specializing in authentication systems and Estonian e-ID services. Provide clear, business-focused security assessments."},
+                    {"role": "system", "content": "You are a cybersecurity expert specializing in risk assessment and executive communication. Provide clear, business-focused security insights."},
                     {"role": "user", "content": prompt}
                 ],
-                max_tokens=500,
-                temperature=0.1
+                max_tokens=self.max_tokens,
+                temperature=self.temperature
             )
             
             return response.choices[0].message.content.strip()
             
         except Exception as e:
             self.logger.error(f"Error generating executive summary: {str(e)}")
-            return "Failed to generate executive summary" 
+            return "Executive summary generation failed. Please review the detailed findings." 
