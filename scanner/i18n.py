@@ -19,6 +19,10 @@ _TRANSLATIONS: Dict[str, Dict[str, str]] = {
         "en": "Comprehensive security scanning for government web applications and Estonian e-ID authentication",
         "et": "Põhjalik turvakontroll valitsuse veebirakendustele ja Eesti e-ID autentimisele",
     },
+    "meta_description": {
+        "en": "E-Gov Guardian offers AI-powered security scanning for government websites and Estonian e-ID authentication, delivering instant vulnerability insights and PDF reports.",
+        "et": "E-Gov Guardian pakub AI-põhist turvakontrolli valitsuse veebisaitidele ja Eesti e-ID autentimisele, pakkudes kiireid haavatavuse ülevaateid ja PDF aruandeid.",
+    },
     "web_scanner_title": {
         "en": "Web Application Security Scanner",
         "et": "Veebirakenduste Turvakanner",

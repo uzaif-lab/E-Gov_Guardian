@@ -70,8 +70,8 @@ pip install -r requirements.txt
 # Option 1: Direct launch (simple)
 python web_app.py
 
-# Option 2: Launcher with auto-setup (first time users)
-python start_web_interface.py
+# Option 2: Production server (Gunicorn)
+gunicorn -k gevent -w 4 -b 0.0.0.0:5000 web_app:app
 ```
 
 **Then open your browser to: http://localhost:5000**
@@ -239,7 +239,7 @@ Static analysis covering:
 1. **Start the web interface:**
 
    ```bash
-   python start_web_interface.py
+   python web_app.py
    ```
 
 2. **Open http://localhost:5000 in your browser**
@@ -354,7 +354,7 @@ E-Gov_Guardian/
 │   ├── progress.html           # Real-time progress tracking
 │   └── results.html            # Results dashboard with PDF download
 ├── web_app.py                  # Flask web application
-├── start_web_interface.py      # Web interface launcher
+# Removed legacy launcher script
 ├── config.yaml                 # Scanner configuration
 └── requirements.txt            # Python dependencies (CLI + Web)
 ```

@@ -17,6 +17,8 @@ from bs4 import BeautifulSoup
 import hashlib
 import subprocess
 from datetime import datetime
+from pathlib import Path
+import yaml
 
 class EstonianLoginScanner:
     """Specialized security scanner for Estonian e-ID authentication pages"""
@@ -35,12 +37,24 @@ class EstonianLoginScanner:
         self.ai_enabled = False
         self.ai_advisor = None
         
-        # Try to get OpenAI API key from environment variable
+        # Resolve OpenAI API key (environment variable takes precedence, otherwise config.yaml)
         openai_api_key = (
             os.getenv('OPENAI_API_KEY') or 
             os.getenv('OPENAI_API_KEY_EGOV')
         )
-        
+
+        if not openai_api_key:
+            config_path = Path("config.yaml")
+            if config_path.exists():
+                try:
+                    with open(config_path, "r", encoding="utf-8") as f:
+                        cfg = yaml.safe_load(f) or {}
+                    openai_api_key = cfg.get('ai_analysis', {}).get('openai_api_key')
+                    if openai_api_key and openai_api_key == "YOUR_OPENAI_API_KEY_HERE":
+                        openai_api_key = None  # Ignore placeholder
+                except Exception as e:
+                    self.logger.warning(f"Could not load OpenAI key from config.yaml: {e}")
+                
         if openai_api_key:
             try:
                 from scanner.ai_advisor import AIFixAdvisor
@@ -57,6 +71,19 @@ class EstonianLoginScanner:
                 os.getenv('OPENAI_API_KEY') or 
                 os.getenv('OPENAI_API_KEY_EGOV')
             )
+
+            if not openai_api_key:
+                config_path = Path("config.yaml")
+                if config_path.exists():
+                    try:
+                        with open(config_path, "r", encoding="utf-8") as f:
+                            cfg = yaml.safe_load(f) or {}
+                        openai_api_key = cfg.get('ai_analysis', {}).get('openai_api_key')
+                        if openai_api_key and openai_api_key == "YOUR_OPENAI_API_KEY_HERE":
+                            openai_api_key = None
+                    except Exception as e:
+                        self.logger.warning(f"Could not load OpenAI key from config.yaml: {e}")
+                    
             if openai_api_key:
                 try:
                     from scanner.ai_advisor import AIFixAdvisor

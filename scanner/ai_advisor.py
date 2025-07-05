@@ -84,7 +84,15 @@ class AIFixAdvisor:
                 temperature=self.temperature
             )
             
-            return response.choices[0].message.content.strip()
+            full_text = response.choices[0].message.content.strip()
+
+            # Limit to first 3 non-empty lines to keep output concise (2-3 sentences)
+            lines = [ln.strip() for ln in full_text.splitlines() if ln.strip()]
+            truncated = " ".join(lines[:3])
+            if len(lines) > 3:
+                truncated += " …"  # indicate there is more content omitted
+
+            return truncated
             
         except Exception as e:
             self.logger.error(f"Error getting recommendation: {str(e)}")
