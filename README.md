@@ -68,12 +68,6 @@ open http://localhost:5000
 
 ---
 
-## Contributing
-
-Issues and PRs are welcome! Please read `CONTRIBUTING.md` for coding standards and branch flow.
-
----
-
 ## License
 
 MIT © Mohd Uzaif Khan – _secure software for the public good._
