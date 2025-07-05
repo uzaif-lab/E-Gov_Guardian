@@ -2,8 +2,15 @@
 FROM python:3.11-slim
 
 # Install minimal build tools (optional; remove if not needed)
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential && \
-    rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    libpango-1.0-0 \
+    libcairo2 \
+    libgdk-pixbuf2.0-0 \
+    libffi-dev \
+    libjpeg-turbo-progs \
+    fonts-liberation2 fonts-dejavu-core \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -19,5 +26,5 @@ COPY . .
 EXPOSE 5000
 
 # Launch with Gunicorn (gevent workers for concurrency)
-ENV PORT=5000
-CMD ["gunicorn", "-k", "gevent", "-w", "4", "-b", "0.0.0.0:5000", "web_app:app"] 
+# honour Render’s PORT variable (default 5000 locally)
+CMD ["sh", "-c", "gunicorn -k gevent -w ${WEB_CONCURRENCY:-4} -b 0.0.0.0:${PORT:-5000} web_app:app"] 
