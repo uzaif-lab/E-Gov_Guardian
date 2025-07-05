@@ -49,24 +49,6 @@ open http://localhost:5000
 
 ---
 
-## Architecture at a Glance
-
-```mermaid
-graph TD
-  UI[Bootstrap 5 Front-end] --> Flask
-  Flask -->|scan| SecurityScanner
-  SecurityScanner --> Builtin[Vulnerability Detector]
-  SecurityScanner --> ZAPClient[OWASP ZAP (opt)]
-  SecurityScanner --> Estonian[Estonian Login Scanner]
-  SecurityScanner --> AIAdvisor[GPT Fix Advisor]
-  SecurityScanner --> ReportGen[WeasyPrint PDF]
-```
-
-_Concurrency:_ Gunicorn + gevent handles many scans with minimal RAM.  
-_Persistence:_ Results cached in-memory (single worker) with optional Redis drop-in.
-
----
-
 ## Technology Stack
 
 - Python 3.11, Flask 3.1
