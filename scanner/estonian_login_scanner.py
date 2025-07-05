@@ -620,15 +620,20 @@ class EstonianLoginScanner:
                     })
                     
         except Exception as e:
-            vulnerabilities.append({
-                'type': 'Security Headers Check Error',
-                'severity': 'LOW',
-                'description': f'Unable to check security headers: {str(e)}',
-                'location': url,
-                'evidence': str(e),
-                'recommendation': 'Verify security headers manually',
-                'estonian_context': 'Security headers verification failed'
-            })
+            # Many high-security sites forcibly close connections from non-browser clients.
+            # Treat those specific network resets as informational so they don’t pollute results.
+            if 'ConnectionResetError' in str(e) or 'Connection aborted' in str(e):
+                self.logger.info(f"Skipped security-header check for {url}: {e}")
+            else:
+                vulnerabilities.append({
+                    'type': 'Security Headers Check Error',
+                    'severity': 'LOW',
+                    'description': f'Unable to check security headers: {str(e)}',
+                    'location': url,
+                    'evidence': str(e),
+                    'recommendation': 'Verify security headers manually',
+                    'estonian_context': 'Security headers verification failed'
+                })
         
         return vulnerabilities
     
