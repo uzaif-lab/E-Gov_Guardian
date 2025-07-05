@@ -8,23 +8,23 @@
         <div class="col-12 text-center">
             <h1 class="display-4 fw-bold text-primary">
                 <i class="fas fa-shield-alt me-3"></i>
-                E-Gov Guardian Security Portal
+                {{ t('site_title') }}
             </h1>
-            <p class="lead text-muted">Comprehensive security scanning for government web applications and Estonian e-ID authentication</p>
+            <p class="lead text-muted">{{ t('site_tagline') }}</p>
         </div>
     </div>
 
     <div class="row">
-        <!-- General Security Scanner (Left Side) -->
-        <div class="col-lg-6">
+        <!-- Web Scanner Section (Left Side) -->
+        <div class="col-lg-6 fade-in">
             <div class="card h-100 border-primary">
                 <div class="card-header bg-primary text-white">
                     <h3 class="mb-0">
                         <i class="fas fa-globe me-2"></i>
-                        General Web Application Scanner
+                        {{ t('web_scanner_title') }}
                     </h3>
                     <p class="mb-0 mt-2 opacity-75">
-                        Comprehensive vulnerability detection for web applications
+                        {{ t('web_scanner_desc') }}
                     </p>
                 </div>
                 <div class="card-body">
@@ -34,14 +34,14 @@
                             <div class="bg-light rounded-circle p-3 d-inline-block mb-2">
                                 <i class="fas fa-bug text-danger fa-2x"></i>
                             </div>
-                            <h6>Vulnerability Detection</h6>
+                            <h6>{{ t('vulnerability_detection') }}</h6>
                             <small class="text-muted">SQL Injection, XSS, CSRF</small>
                         </div>
                         <div class="col-md-6 text-center mb-3">
                             <div class="bg-light rounded-circle p-3 d-inline-block mb-2">
                                 <i class="fas fa-cogs text-info fa-2x"></i>
                             </div>
-                            <h6>Advanced Testing</h6>
+                            <h6>{{ t('advanced_testing') }}</h6>
                             <small class="text-muted">API Fuzzing, GraphQL</small>
                         </div>
                     </div>
@@ -51,7 +51,7 @@
                         
                         <div class="mb-3">
                             <label for="{{ form.target_url.id }}" class="form-label fw-bold">
-                                <i class="fas fa-link me-2"></i>Target URL
+                                <i class="fas fa-link me-2"></i>{{ t('target_url_label') }}
                             </label>
                             {{ form.target_url(class="form-control") }}
                             {% if form.target_url.errors %}
@@ -72,7 +72,7 @@
                                 <div class="form-check form-switch mb-2">
                                     {{ form.deep_scan(class="form-check-input") }}
                                     <label class="form-check-label fw-bold" for="{{ form.deep_scan.id }}">
-                                        <i class="fas fa-microscope me-2"></i>Deep Scan
+                                        <i class="fas fa-microscope me-2"></i>{{ t('deep_scan_label') }}
                                     </label>
                                 </div>
                             </div>
@@ -80,13 +80,13 @@
                                 <div class="form-check form-switch mb-2">
                                     {{ form.ai_analysis(class="form-check-input") }}
                                     <label class="form-check-label fw-bold" for="{{ form.ai_analysis.id }}">
-                                        🧠 AI Fix Advisor
+                                        {{ t('ai_fix_advisor') }}
                                     </label>
                                 </div>
                             </div>
                             <div class="col-md-4">
                                 <label for="{{ form.scan_type.id }}" class="form-label fw-bold small">
-                                    <i class="fas fa-cog me-1"></i>Scan Type
+                                    <i class="fas fa-cog me-1"></i>{{ t('scan_type_label') }}
                                 </label>
                                 {{ form.scan_type(class="form-select form-select-sm") }}
                             </div>
@@ -97,7 +97,7 @@
                             <div class="card border-secondary">
                                 <div class="card-header bg-secondary text-white py-2">
                                     <h6 class="mb-0">
-                                        <i class="fas fa-tasks me-2"></i>Security Tests
+                                        <i class="fas fa-tasks me-2"></i>{{ t('security_tests') }}
                                         <button type="button" class="btn btn-sm btn-light ms-2" onclick="selectAllTests()">All</button>
                                         <button type="button" class="btn btn-sm btn-outline-light ms-1" onclick="clearAllTests()">None</button>
                                     </h6>
@@ -105,68 +105,68 @@
                                 <div class="card-body p-2">
                                     <div class="row">
                                         <div class="col-md-6">
-                                            <h6 class="text-primary mb-2"><i class="fas fa-bug me-1"></i>Core Tests</h6>
+                                            <h6 class="text-primary mb-2"><i class="fas fa-bug me-1"></i>{{ t('core_tests') }}</h6>
                                             <div class="form-check form-check-sm mb-1">
                                                 {{ form.test_sql_injection(class="form-check-input") }}
                                                 <label class="form-check-label small" for="{{ form.test_sql_injection.id }}">
-                                                    SQL Injection
+                                                    {{ t('sql_injection') }}
                                                 </label>
                                             </div>
                                             <div class="form-check form-check-sm mb-1">
                                                 {{ form.test_xss(class="form-check-input") }}
                                                 <label class="form-check-label small" for="{{ form.test_xss.id }}">
-                                                    Cross-Site Scripting
+                                                    {{ t('xss') }}
                                                 </label>
                                             </div>
                                             <div class="form-check form-check-sm mb-1">
                                                 {{ form.test_csrf(class="form-check-input") }}
                                                 <label class="form-check-label small" for="{{ form.test_csrf.id }}">
-                                                    CSRF Detection
+                                                    {{ t('csrf') }}
                                                 </label>
                                             </div>
                                             <div class="form-check form-check-sm mb-1">
                                                 {{ form.test_headers(class="form-check-input") }}
                                                 <label class="form-check-label small" for="{{ form.test_headers.id }}">
-                                                    Security Headers
+                                                    {{ t('security_headers') }}
                                                 </label>
                                             </div>
                                             <div class="form-check form-check-sm mb-1">
                                                 {{ form.test_cors(class="form-check-input") }}
                                                 <label class="form-check-label small" for="{{ form.test_cors.id }}">
-                                                    CORS Policy
+                                                    {{ t('cors_policy') }}
                                                 </label>
                                             </div>
                                         </div>
                                         <div class="col-md-6">
-                                            <h6 class="text-success mb-2"><i class="fas fa-cogs me-1"></i>Advanced</h6>
+                                            <h6 class="text-success mb-2"><i class="fas fa-cogs me-1"></i>{{ t('advanced_tests') }}</h6>
                                             <div class="form-check form-check-sm mb-1">
                                                 {{ form.test_open_redirect(class="form-check-input") }}
                                                 <label class="form-check-label small" for="{{ form.test_open_redirect.id }}">
-                                                    Open Redirects
+                                                    {{ t('open_redirects') }}
                                                 </label>
                                             </div>
                                             <div class="form-check form-check-sm mb-1">
                                                 {{ form.test_host_header(class="form-check-input") }}
                                                 <label class="form-check-label small" for="{{ form.test_host_header.id }}">
-                                                    Host Header Injection
+                                                    {{ t('host_header_injection') }}
                                                 </label>
                                             </div>
                                             <div class="form-check form-check-sm mb-1">
                                                 {{ form.test_api_fuzzing(class="form-check-input") }}
                                                 <label class="form-check-label small" for="{{ form.test_api_fuzzing.id }}">
-                                                    API Fuzzing
+                                                    {{ t('api_fuzzing') }}
                                                 </label>
                                             </div>
                                             <div class="form-check form-check-sm mb-1">
                                                 {{ form.test_subresource_integrity(class="form-check-input") }}
                                                 <label class="form-check-label small" for="{{ form.test_subresource_integrity.id }}">
-                                                    Subresource Integrity
+                                                    {{ t('subresource_integrity') }}
                                                 </label>
                                             </div>
                                             <div class="form-check form-check-sm mb-1">
                                                 {{ form.test_graphql(class="form-check-input") }}
                                                 <label class="form-check-label small" for="{{ form.test_graphql.id }}">
-                                                    GraphQL Security
+                                                    {{ t('graphql_security') }}
                                                 </label>
                                             </div>
                                         </div>
@@ -176,7 +176,7 @@
                         </div>
 
                         <div class="d-grid">
-                            {{ form.submit(class="btn btn-primary") }}
+                            {{ form.submit(class="btn btn-primary", value=t('submit_scan')) }}
                         </div>
                     </form>
                 </div>
@@ -189,10 +189,10 @@
                 <div class="card-header bg-warning text-dark">
                     <h3 class="mb-0">
                         <i class="fas fa-id-card me-2"></i>
-                        Estonian e-ID Login Scanner
+                        {{ t('estonian_scanner_title') }}
                     </h3>
                     <p class="mb-0 mt-2">
-                        Specialized security assessment for Estonian e-ID, Smart-ID, and Mobile-ID authentication
+                        {{ t('estonian_scanner_desc') }}
                     </p>
                 </div>
                 <div class="card-body">
@@ -202,14 +202,14 @@
                             <div class="bg-light rounded-circle p-3 d-inline-block mb-2">
                                 <i class="fas fa-certificate text-warning fa-2x"></i>
                             </div>
-                            <h6>e-ID Security</h6>
+                            <h6>{{ t('vulnerability_detection') }}</h6>
                             <small class="text-muted">Certificate validation, TLS</small>
                         </div>
                         <div class="col-md-6 text-center mb-3">
                             <div class="bg-light rounded-circle p-3 d-inline-block mb-2">
                                 <i class="fas fa-mobile-alt text-success fa-2x"></i>
                             </div>
-                            <h6>Estonian Standards</h6>
+                            <h6>{{ t('government_security') }}</h6>
                             <small class="text-muted">Smart-ID, Mobile-ID checks</small>
                         </div>
                     </div>
@@ -219,7 +219,7 @@
                         
                         <div class="mb-3">
                             <label for="{{ estonian_form.estonian_url.id }}" class="form-label fw-bold">
-                                <i class="fas fa-link me-2"></i>Estonian Login Page URL
+                                <i class="fas fa-link me-2"></i>{{ t('estonian_login_page_url_label') }}
                             </label>
                             {{ estonian_form.estonian_url(class="form-control") }}
                             {% if estonian_form.estonian_url.errors %}
@@ -239,10 +239,10 @@
                             <div class="form-check form-switch">
                                 {{ estonian_form.estonian_ai_analysis(class="form-check-input") }}
                                 <label class="form-check-label fw-bold" for="{{ estonian_form.estonian_ai_analysis.id }}">
-                                    🧠 AI e-ID Security Advisor
+                                    🧠 {{ t('ai_e_id_security_advisor') }}
                                 </label>
                                 <div class="form-text">
-                                    Get AI-powered recommendations for Estonian e-ID security
+                                    {{ t('ai_e_id_security_advisor_desc') }}
                                 </div>
                             </div>
                         </div>
@@ -252,27 +252,27 @@
                             <div class="card border-info">
                                 <div class="card-header bg-info text-white py-2">
                                     <h6 class="mb-0">
-                                        <i class="fas fa-shield-alt me-2"></i>Estonian e-ID Security Checks
+                                        <i class="fas fa-shield-alt me-2"></i>{{ t('estonian_e_id_security_checks') }}
                                     </h6>
                                 </div>
                                 <div class="card-body p-2">
                                     <div class="row small">
                                         <div class="col-md-6">
                                             <ul class="list-unstyled mb-0">
-                                                <li><i class="fas fa-check text-success me-1"></i> HTTPS & TLS Security</li>
-                                                <li><i class="fas fa-check text-success me-1"></i> Security Headers</li>
-                                                <li><i class="fas fa-check text-success me-1"></i> Cookie Security</li>
-                                                <li><i class="fas fa-check text-success me-1"></i> Input/Form Security</li>
-                                                <li><i class="fas fa-check text-success me-1"></i> Open Redirect Detection</li>
+                                                <li><i class="fas fa-check text-success me-1"></i> {{ t('https_tls_security') }}</li>
+                                                <li><i class="fas fa-check text-success me-1"></i> {{ t('security_headers') }}</li>
+                                                <li><i class="fas fa-check text-success me-1"></i> {{ t('cookie_security') }}</li>
+                                                <li><i class="fas fa-check text-success me-1"></i> {{ t('input_form_security') }}</li>
+                                                <li><i class="fas fa-check text-success me-1"></i> {{ t('open_redirect_detection') }}</li>
                                             </ul>
                                         </div>
                                         <div class="col-md-6">
                                             <ul class="list-unstyled mb-0">
-                                                <li><i class="fas fa-check text-success me-1"></i> Error Leak Detection</li>
-                                                <li><i class="fas fa-check text-success me-1"></i> JS Library Security</li>
-                                                <li><i class="fas fa-check text-success me-1"></i> CORS Configuration</li>
-                                                <li><i class="fas fa-check text-success me-1"></i> Clickjacking Protection</li>
-                                                <li><i class="fas fa-check text-success me-1"></i> Privacy Risk Assessment</li>
+                                                <li><i class="fas fa-check text-success me-1"></i> {{ t('error_leak_detection') }}</li>
+                                                <li><i class="fas fa-check text-success me-1"></i> {{ t('js_library_security') }}</li>
+                                                <li><i class="fas fa-check text-success me-1"></i> {{ t('cors_configuration') }}</li>
+                                                <li><i class="fas fa-check text-success me-1"></i> {{ t('clickjacking_protection') }}</li>
+                                                <li><i class="fas fa-check text-success me-1"></i> {{ t('privacy_risk_assessment') }}</li>
                                             </ul>
                                         </div>
                                     </div>
@@ -283,8 +283,7 @@
                         <div class="alert alert-info py-2">
                             <small>
                                 <i class="fas fa-flag me-1"></i>
-                                <strong>Estonian e-ID Focus:</strong> This scanner is specifically designed for Estonian 
-                                e-ID, Smart-ID, and Mobile-ID authentication pages with specialized security checks.
+                                <strong>{{ t('estonian_e_id_focus') }}:</strong> {{ t('estonian_e_id_focus_desc') }}
                             </small>
                         </div>
 
@@ -305,23 +304,23 @@
                     <div class="row text-center">
                         <div class="col-md-3">
                             <i class="fas fa-file-pdf text-danger fa-2x mb-2"></i>
-                            <h6>PDF Reports</h6>
-                            <small class="text-muted">Comprehensive security assessment reports</small>
+                            <h6>{{ t('pdf_reports') }}</h6>
+                            <small class="text-muted">{{ t('pdf_reports_desc') }}</small>
                         </div>
                         <div class="col-md-3">
                             <i class="fas fa-bolt text-warning fa-2x mb-2"></i>
-                            <h6>Real-time Scanning</h6>
-                            <small class="text-muted">Live progress updates and instant results</small>
+                            <h6>{{ t('real_time_scanning') }}</h6>
+                            <small class="text-muted">{{ t('real_time_scanning_desc') }}</small>
                         </div>
                         <div class="col-md-3">
                             <i class="fas fa-brain text-primary fa-2x mb-2"></i>
-                            <h6>AI-Powered Analysis</h6>
-                            <small class="text-muted">Intelligent fix recommendations</small>
+                            <h6>{{ t('ai_powered_analysis') }}</h6>
+                            <small class="text-muted">{{ t('ai_powered_analysis_desc') }}</small>
                         </div>
                         <div class="col-md-3">
                             <i class="fas fa-shield-alt text-success fa-2x mb-2"></i>
-                            <h6>Government Security</h6>
-                            <small class="text-muted">Specialized for e-government applications</small>
+                            <h6>{{ t('government_security') }}</h6>
+                            <small class="text-muted">{{ t('government_security_desc') }}</small>
                         </div>
                     </div>
                 </div>
@@ -335,13 +334,13 @@
             <div class="alert alert-warning">
                 <h6 class="fw-bold mb-2">
                     <i class="fas fa-exclamation-triangle me-2"></i>
-                    Security Disclaimer
+                    {{ t('security_disclaimer') }}
                 </h6>
                 <ul class="mb-0 small">
-                    <li>Only scan websites you own or have explicit permission to test</li>
-                    <li>This tool performs active security testing which may be detected by security systems</li>
-                    <li>Estonian e-ID scanner is designed specifically for e-ID authentication pages</li>
-                    <li>AI analysis requires OpenAI API access and may have usage limits</li>
+                    <li>{{ t('security_disclaimer_item_1') }}</li>
+                    <li>{{ t('security_disclaimer_item_2') }}</li>
+                    <li>{{ t('security_disclaimer_item_3') }}</li>
+                    <li>{{ t('security_disclaimer_item_4') }}</li>
                 </ul>
             </div>
         </div>

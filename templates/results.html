@@ -12,7 +12,7 @@
                     <div class="col">
                         <h2 class="mb-0">
                             <i class="fas fa-shield-alt me-2"></i>
-                            Security Assessment Results
+                            {{ t('scan_results_header') }}
                         </h2>
                         <p class="mb-0 mt-2 opacity-75">
                             Target: {{ results.target }}
@@ -21,7 +21,7 @@
                     <div class="col-auto">
                         <a href="{{ url_for('download_report', scan_id=scan_id) }}" class="btn btn-success btn-lg">
                             <i class="fas fa-download me-2"></i>
-                            Download PDF Report
+                            {{ t('download_report') }}
                         </a>
                     </div>
                 </div>
@@ -36,7 +36,7 @@
                             <h3 class="text-{{ risk_color }} mb-1">
                                 {{ results.risk_rating|upper }}
                             </h3>
-                            <small class="text-muted">Risk Rating</small>
+                            <small class="text-muted">{{ t('risk_rating_label') }}</small>
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -47,7 +47,7 @@
                             <h3 class="text-{{ score_color }} mb-1">
                                 {{ results.compliance_score }}/100
                             </h3>
-                            <small class="text-muted">Compliance Score</small>
+                            <small class="text-muted">{{ t('compliance_score_label') }}</small>
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -55,7 +55,7 @@
                             <h3 class="text-primary mb-1">
                                 {{ results.executive_summary.total_vulnerabilities }}
                             </h3>
-                            <small class="text-muted">Total Issues</small>
+                            <small class="text-muted">{{ t('total_issues') }}</small>
                         </div>
                     </div>
                     <div class="col-md-3">
@@ -63,7 +63,7 @@
                             <h3 class="text-info mb-1">
                                 {{ results.scan_info.duration }}s
                             </h3>
-                            <small class="text-muted">Scan Duration</small>
+                            <small class="text-muted">{{ t('scan_duration_label') }}</small>
                         </div>
                     </div>
                 </div>
@@ -77,7 +77,7 @@
                     <div class="card-header">
                         <h5 class="mb-0">
                             <i class="fas fa-chart-pie me-2"></i>
-                            Vulnerability Breakdown
+                            {{ t('vulnerability_breakdown') }}
                         </h5>
                     </div>
                     <div class="card-body">
@@ -122,7 +122,7 @@
                     <div class="card-header">
                         <h5 class="mb-0">
                             <i class="fas fa-lightbulb me-2"></i>
-                            Key Recommendations
+                            {{ t('key_recommendations') }}
                         </h5>
                     </div>
                     <div class="card-body">
@@ -145,7 +145,7 @@
                 <div class="card-header">
                     <h5 class="mb-0">
                         <i class="fas fa-shield-alt me-2"></i>
-                        Authentication Method Security Analysis
+                        {{ t('auth_method_security_analysis') }}
                     </h5>
                 </div>
                 <div class="card-body">
@@ -162,7 +162,7 @@
                                     <div class="card-body">
                                         {% if recs.security_rating %}
                                             <div class="mb-3">
-                                                <strong>Security Rating:</strong>
+                                                <strong>{{ t('security_rating_label') }}:</strong>
                                                 <span class="badge bg-{{ 'success' if recs.security_rating == 'Good' else 'warning' if recs.security_rating == 'Fair' else 'danger' }} ms-2">
                                                     {{ recs.security_rating }}
                                                 </span>
@@ -170,7 +170,7 @@
                                         {% endif %}
                                         
                                         {% if recs.recommendations %}
-                                            <h6 class="mb-2">Recommendations:</h6>
+                                            <h6 class="mb-2">{{ t('recommendations_label') }}:</h6>
                                             <ul class="list-unstyled">
                                                 {% for rec in recs.recommendations %}
                                                     <li class="mb-2">
@@ -182,7 +182,7 @@
                                         {% endif %}
                                         
                                         {% if recs.compliance_issues %}
-                                            <h6 class="mb-2 mt-3">Compliance Issues:</h6>
+                                            <h6 class="mb-2 mt-3">{{ t('compliance_issues_label') }}:</h6>
                                             <ul class="list-unstyled">
                                                 {% for issue in recs.compliance_issues %}
                                                     <li class="mb-2">

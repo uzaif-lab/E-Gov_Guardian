@@ -34,6 +34,21 @@
 
 ## 🚀 Quick Start
 
+### 🩴 One-Click Docker Setup
+
+```bash
+# clone the repository
+git clone https://github.com/uzaif-lab/E-Gov_Guardian.git
+cd E-Gov_Guardian
+
+# build the image and start the web UI
+docker compose up --build
+```
+
+Your browser will open at **http://localhost:5000**.
+
+> Docker Desktop (or Docker Engine + Compose v2) is the only dependency – no local Python setup required.
+
 ### Prerequisites
 
 - Python 3.8+

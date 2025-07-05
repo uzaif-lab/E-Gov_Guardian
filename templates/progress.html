@@ -9,10 +9,10 @@
             <div class="card-header text-center">
                 <h2 class="mb-0">
                     <i class="fas fa-cog fa-spin me-2"></i>
-                    Security Scan in Progress
+                    {{ t('security_scan_in_progress') }}
                 </h2>
                 <p class="mb-0 mt-2 opacity-75">
-                    Analyzing target for security vulnerabilities...
+                    {{ t('analysis_tagline') }}
                 </p>
             </div>
             <div class="card-body p-4">
@@ -61,17 +61,17 @@
                     <strong>What's happening?</strong>
                     <div id="scan-details" class="mt-2">
                         <ul class="mb-0">
-                            <li>Crawling website structure and discovering endpoints</li>
-                            <li>Testing for common vulnerabilities (SQL Injection, XSS, etc.)</li>
-                            <li>Analyzing security headers and configurations</li>
-                            <li>Checking for known security issues</li>
+                            <li>{{ t('progress_item_crawl') }}</li>
+                            <li>{{ t('progress_item_vuln_tests') }}</li>
+                            <li>{{ t('progress_item_headers') }}</li>
+                            <li>{{ t('progress_item_known_issues') }}</li>
                         </ul>
                     </div>
                 </div>
 
                 <div class="text-center">
                     <button id="cancel-scan" class="btn btn-outline-danger" onclick="cancelScan()">
-                        <i class="fas fa-stop me-2"></i>Cancel Scan
+                        <i class="fas fa-stop me-2"></i>{{ t('cancel_scan') }}
                     </button>
                 </div>
             </div>

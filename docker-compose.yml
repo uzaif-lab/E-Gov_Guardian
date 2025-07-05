@@ -1,0 +1,12 @@
+version: "3.9"
+services:
+  egov-guardian:
+    build: .
+    container_name: egov-guardian
+    ports:
+      - "5000:5000"
+    environment:
+      # Uncomment and set your OpenAI key if you want AI analysis inside the container
+      # - OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped 

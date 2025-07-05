@@ -8,17 +8,53 @@ import threading
 import uuid
 import time
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify, send_file, flash, redirect, url_for
+from flask import Flask, render_template, request, jsonify, send_file, flash, redirect, url_for, session, g
 from flask_wtf import FlaskForm
 from wtforms import StringField, SelectField, BooleanField, SubmitField
 from wtforms.validators import DataRequired, URL
 
-# Import our scanners
+# Core modules
 from scanner.main_scanner import SecurityScanner
 from scanner.estonian_login_scanner import EstonianLoginScanner
 
+# Simple i18n helper
+from scanner.i18n import translate
+
 app = Flask(__name__)
 app.secret_key = 'egov-guardian-security-scanner-in-memory-2024'
+
+# ---------------------------------------------------------------------------
+# Internationalisation helpers
+# ---------------------------------------------------------------------------
+
+
+@app.before_request
+def _set_request_language():
+    """Determine the current language for the request (defaults to *en*)."""
+    lang = session.get('lang', 'en')
+    if lang not in ('en', 'et'):
+        lang = 'en'
+    g.lang = lang
+
+
+@app.context_processor
+def _inject_translation_helpers():
+    """Expose translator *t* and *current_lang* in all Jinja templates."""
+    return {
+        't': lambda key: translate(key, g.get('lang', 'en')),
+        'current_lang': g.get('lang', 'en'),
+    }
+
+
+# Simple route to switch UI language
+@app.route('/set-language/<lang_code>')
+def set_language(lang_code: str):
+    if lang_code not in ('en', 'et'):
+        lang_code = 'en'
+    session['lang'] = lang_code
+    # Redirect back to referrer or homepage
+    referrer = request.referrer or url_for('index')
+    return redirect(referrer)
 
 # In-memory operation - no file storage
 
@@ -246,16 +282,19 @@ class EstonianScanForm(FlaskForm):
     
     submit_estonian = SubmitField('Start Estonian e-ID Security Scan')
 
-def generate_pdf_report_in_memory(json_data):
+def generate_pdf_report_in_memory(json_data, lang: str = 'en'):
     """Generate PDF report from JSON data in memory using ReportLab"""
-    from reportlab.lib.pagesizes import letter, A4
+    from reportlab.lib.pagesizes import A4
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
     from reportlab.lib.units import inch
     from reportlab.lib import colors
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from reportlab.lib.enums import TA_CENTER
     from io import BytesIO
     
+    # Translation helper
+    from scanner.i18n import translate as _t
+
     # Create in-memory buffer
     buffer = BytesIO()
     
@@ -306,18 +345,18 @@ def generate_pdf_report_in_memory(json_data):
     )
     
     # Title
-    story.append(Paragraph("E-Gov Guardian Security Report", heading_style))
+    story.append(Paragraph(_t("security_report_title", lang), heading_style))
     story.append(Spacer(1, 20))
     
     # Executive Summary
     summary = json_data.get('executive_summary', {})
-    story.append(Paragraph("Executive Summary", subheading_style))
+    story.append(Paragraph(_t("executive_summary", lang), subheading_style))
     
     summary_text = f"""
-    Target URL: {json_data.get('target', 'N/A')}
-    Risk Rating: {json_data.get('risk_rating', 'N/A')}
-    Compliance Score: {json_data.get('compliance_score', 'N/A')}/100
-    Total Issues: {len(json_data.get('vulnerabilities', []))}
+    {_t('target_url', lang)}: {json_data.get('target', 'N/A')}
+    {_t('risk_rating', lang)}: {json_data.get('risk_rating', 'N/A')}
+    {_t('compliance_score', lang)}: {json_data.get('compliance_score', 'N/A')}/100
+    {_t('total_issues', lang)}: {len(json_data.get('vulnerabilities', []))}
     """
     story.append(Paragraph(summary_text, normal_style))
     story.append(Spacer(1, 20))
@@ -325,7 +364,7 @@ def generate_pdf_report_in_memory(json_data):
     # Vulnerabilities by Severity
     vulnerabilities = json_data.get('vulnerabilities', [])
     if vulnerabilities:
-        story.append(Paragraph("Detailed Vulnerability Analysis", heading_style))
+        story.append(Paragraph(_t("detailed_vulnerability_analysis", lang), heading_style))
         
         # Group by severity
         severity_counts = {'CRITICAL': 0, 'HIGH': 0, 'MEDIUM': 0, 'LOW': 0, 'INFO': 0}
@@ -334,7 +373,7 @@ def generate_pdf_report_in_memory(json_data):
             if severity in severity_counts:
                 severity_counts[severity] += 1
         
-        severity_data = [['Severity', 'Count']]
+        severity_data = [[_t('severity', lang), 'Count']]
         for severity, count in severity_counts.items():
             if count > 0:
                 severity_data.append([severity, str(count)])
@@ -355,7 +394,7 @@ def generate_pdf_report_in_memory(json_data):
         story.append(Spacer(1, 20))
         
         # Detailed Vulnerabilities
-        story.append(Paragraph("Detailed Vulnerability Analysis", heading_style))
+        story.append(Paragraph(_t("detailed_vulnerability_analysis", lang), heading_style))
         
         for i, vuln in enumerate(vulnerabilities, 1):
             vuln_title = f"{i}. {vuln.get('type', 'Unknown Vulnerability')}"
@@ -374,24 +413,24 @@ def generate_pdf_report_in_memory(json_data):
             
             # Create table data with proper formatting
             table_data = [
-                ['Severity', Paragraph(severity, cell_style)],
-                ['Location', Paragraph(vuln.get('location', 'N/A'), cell_style)],
-                ['Description', Paragraph(vuln.get('description', 'N/A'), cell_style)],
-                ['Technical Details', Paragraph(vuln.get('details', 'N/A'), cell_style)],
-                ['Remediation', Paragraph(vuln.get('remediation', 'N/A'), cell_style)]
+                [_t('severity', lang), Paragraph(severity, cell_style)],
+                [_t('location', lang), Paragraph(vuln.get('location', 'N/A'), cell_style)],
+                [_t('description', lang), Paragraph(vuln.get('description', 'N/A'), cell_style)],
+                [_t('technical_details', lang), Paragraph(vuln.get('details', 'N/A'), cell_style)],
+                [_t('remediation', lang), Paragraph(vuln.get('remediation', 'N/A'), cell_style)]
             ]
             
             # Add AI recommendation if available
             if vuln.get('ai_powered') and vuln.get('remediation'):
                 ai_rec = vuln.get('remediation', '')
                 # Clean and wrap AI recommendation text for PDF
-                ai_label = "AI Fix Advisor"
+                ai_label = _t('ai_recommendation', lang)
                 # Limit AI recommendation to 250 chars for better PDF formatting
                 if len(ai_rec) > 250:
                     ai_rec = ai_rec[:250] + '...'
                 # Create a Paragraph object for better text wrapping
                 ai_text = Paragraph(ai_rec, normal_style)
-                table_data.append(['AI Recommendation', ai_text])
+                table_data.append([ai_label, ai_text])
             
             # Create and style the table
             table = Table(table_data, colWidths=[120, 380])
@@ -888,7 +927,8 @@ def download_report(scan_id):
     try:
         # Generate PDF in memory
         results = scan_results[scan_id]
-        pdf_buffer = generate_pdf_report_in_memory(results)
+        lang = session.get('lang', 'en')
+        pdf_buffer = generate_pdf_report_in_memory(results, lang)
         
         # Generate filename with timestamp
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
