@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgdk-pixbuf2.0-0 \
     libffi-dev \
     libjpeg-turbo-progs \
+    nmap \
     fonts-liberation2 fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
