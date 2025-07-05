@@ -33,7 +33,13 @@ class SecurityScanner:
     """Production-grade security scanner for comprehensive vulnerability assessment"""
     
     def __init__(self, config_path: str = "config.yaml"):
+        # Create logger early so _load_config can use it even before logging is fully configured
+        self.logger = logging.getLogger(__name__)
+
+        # Load configuration (may log warnings/errors if the YAML file is missing/malformed)
         self.config = self._load_config(config_path)
+
+        # Now set up logging with the loaded configuration and refresh the logger reference
         self._setup_logging()
         self.logger = logging.getLogger(__name__)
         
