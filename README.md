@@ -107,7 +107,6 @@ open http://localhost:5000
 git clone https://github.com/uzaif-lab/E-Gov_Guardian.git
 cd E-Gov_Guardian
 
-<<<<<<< HEAD
 # Edit docker-compose.yml to add your OpenAI API key
 # Then run:
 docker-compose up -d
@@ -236,9 +235,6 @@ zap:
 - Authentication flow security analysis
 - Privacy risk assessment
 - Cross-border interoperability security
-=======
----
->>>>>>> db215cfebc695b5a6ebcb3f5f67cfa95ecfd6efb
 
 ## Technology Stack
 
@@ -387,14 +383,8 @@ _"Securing digital government services for Estonian citizens - because their tru
 
 ---
 
-<<<<<<< HEAD
 ### 🇪🇪 For Estonian Developers
 
 This tool was created specifically for the Estonian developer community. Whether you're working on government portals, e-services, or any digital product that serves Estonian citizens, E-Gov Guardian helps you maintain the security standards that our digital society depends on.
 
 
-=======
-## License
-
-MIT © Mohd Uzaif Khan – _secure software for the public good._
->>>>>>> db215cfebc695b5a6ebcb3f5f67cfa95ecfd6efb
