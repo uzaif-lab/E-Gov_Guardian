@@ -106,22 +106,21 @@ _Professional progress indicators showing comprehensive security assessment phas
 
 ### Scan Results + AI Explanation
 
-![Scan Results Overview](imagesestonianapp/result%20one.png)
+
 _Executive summary with risk ratings, compliance scores, and vulnerability breakdown by severity_
 
-![Detailed Results](imagesestonianapp/result%20two.png)
 _AI-powered recommendations for each finding with authentication method-specific security analysis_
 
 ### Application Interface
 
-![Main Interface](imagesestonianapp/Screenshot%202025-07-16%20195952.png)
+
 _Complete application interface showing the professional security scanning dashboard_
 
 ## 📄 Sample PDF Report
 
 E-Gov Guardian generates professional PDF reports suitable for audit evidence and stakeholder presentations. Here's a sample security report:
 
-**[📋 View Sample Security Report](demo_images_report/security_report_20250716_143200.pdf)**
+**[📋 View Sample Security Report](security_report_20250716_143200.pdf)**
 
 ### Report Features:
 
